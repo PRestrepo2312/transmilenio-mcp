@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TransMilenio en vivo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d7141a'/%3E%3Crect x='6' y='13' width='20' height='6' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="map" aria-label="Mapa de buses en vía"></div>
+
+<aside class="panel">
+  <div class="cabeza">
+    <div class="fila">
+      <div class="titulo">
+        <strong>TransMilenio en vivo</strong>
+        <div class="estado" id="estado"><i></i><span id="estado-txt">Conectando…</span></div>
+      </div>
+      <button class="icono" id="tema" type="button"></button>
+    </div>
+
+    <form class="buscador" id="buscar" role="search">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="q" type="search" placeholder="Busca una ruta o estación" autocomplete="off" aria-label="Busca una ruta o estación">
+    </form>
+    <button class="ubicar" id="ubicar" type="button">
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      <span>Usar mi ubicación</span>
+    </button>
+
+    <div class="flota">
+      <div class="barra" id="barra"></div>
+      <span id="flota-txt" class="num">Contando buses…</span>
+    </div>
+  </div>
+
+  <div class="cuerpo" id="vista" aria-live="polite"></div>
+
+  <div class="pie">Datos abiertos de TransMilenio S.A. (CC BY-SA 4.0). Proyecto independiente; los tiempos son estimados.</div>
+</aside>
+
+<div class="hud" aria-hidden="true">
+  <div class="grande num" id="hud-total">—</div>
+  <div class="sub">buses de TransMilenio en vía, <span id="hud-hora"></span></div>
+  <div class="barra" id="hud-barra"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

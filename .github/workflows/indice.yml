@@ -1,0 +1,32 @@
+# Construye cada día el índice compacto desde el GTFS oficial de TransMilenio
+# (que se publica ~4:20 a.m. hora Bogotá) y lo deja como asset del release "indice".
+# Así el MCP arranca en segundos en vez de bajar 180 MB la primera vez.
+name: indice-diario
+
+on:
+  schedule:
+    - cron: "0 11 * * *" # 6:00 a.m. Bogotá
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  indice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install .
+      - run: transmilenio-indice -o indice.json.gz
+      - name: Publicar en el release "indice"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view indice >/dev/null 2>&1 || \
+            gh release create indice --title "Índice GTFS (diario)" \
+              --notes "Índice compacto derivado del GTFS de TransMilenio S.A. (CC BY-SA 4.0). Se regenera cada día."
+          gh release upload indice indice.json.gz --clobber

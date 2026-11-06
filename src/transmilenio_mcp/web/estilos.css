@@ -1,0 +1,187 @@
+  :root {
+    --fondo: #eef0f3;
+    --panel: #ffffff;
+    --texto: #1f2328;
+    --texto-2: #59636e;
+    --texto-3: #8b949e;
+    --linea: #e6e8eb;
+    --suave: #f4f5f7;
+    --enlace: #0b62c4;
+    --aviso-fondo: #fff5e0;
+    --aviso-texto: #7a4b00;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .06), 0 8px 28px rgba(0, 0, 0, .12);
+    --vivo: #1f8a3b;
+    --detenido: #c27c00;
+  }
+  :root[data-tema="noche"] {
+    --fondo: #0f1113;
+    --panel: #181b1f;
+    --texto: #e8eaed;
+    --texto-2: #a3abb5;
+    --texto-3: #747d88;
+    --linea: #2a2f35;
+    --suave: #21252a;
+    --enlace: #6cb0ff;
+    --aviso-fondo: #2e2414;
+    --aviso-texto: #f2c46d;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .45);
+    --vivo: #4cc26a;
+    --detenido: #f0a92e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--texto);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--enlace); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* panel */
+  .panel { position: absolute; top: 12px; left: 12px; bottom: 12px; width: 380px; display: flex;
+    flex-direction: column; background: var(--panel); border-radius: 12px; box-shadow: var(--sombra); overflow: hidden; }
+  .cabeza { padding: 14px 16px 12px; border-bottom: 1px solid var(--linea); }
+  .fila { display: flex; align-items: center; gap: 10px; }
+  .titulo { flex: 1; min-width: 0; }
+  .titulo strong { display: block; font-size: 16px; font-weight: 600; }
+  .estado { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--texto-2); margin-top: 1px; }
+  .estado i { width: 7px; height: 7px; border-radius: 50%; background: var(--texto-3); flex: none; }
+  .estado.vivo i { background: var(--vivo); }
+  .estado.detenido { color: var(--detenido); }
+  .estado.detenido i { background: var(--detenido); }
+  .icono { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--linea); background: var(--panel);
+    display: grid; place-items: center; cursor: pointer; color: var(--texto-2); flex: none; }
+  .icono:hover { background: var(--suave); color: var(--texto); }
+
+  .buscador { position: relative; margin-top: 12px; }
+  .buscador input { width: 100%; height: 40px; border: 1px solid var(--linea); border-radius: 8px; background: var(--suave);
+    padding: 0 12px 0 36px; outline: none; }
+  .buscador input:focus { background: var(--panel); border-color: var(--enlace); }
+  .buscador svg { position: absolute; left: 11px; top: 12px; color: var(--texto-3); pointer-events: none; }
+  .ubicar { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none;
+    padding: 2px 0; color: var(--enlace); cursor: pointer; font-weight: 500; }
+
+  .flota { margin-top: 12px; font-size: 12.5px; color: var(--texto-2); }
+  .barra { display: flex; height: 4px; border-radius: 2px; overflow: hidden; background: var(--suave); margin-bottom: 6px; }
+  .barra span { height: 100%; }
+  .flota strong { color: var(--texto); font-weight: 600; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+  .leyenda > span { display: inline-flex; align-items: center; gap: 5px; }
+  .ico { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; }
+  .placa svg { margin-right: 4px; flex: none; }
+
+  .cuerpo { flex: 1; overflow-y: auto; padding: 4px 16px 16px; scrollbar-width: thin; }
+  .pie { padding: 9px 16px; border-top: 1px solid var(--linea); font-size: 11.5px; color: var(--texto-3); }
+
+  .encabezado { margin: 14px 0 0; font-size: 17px; font-weight: 600; line-height: 1.25; }
+  .sub { margin: 2px 0 0; color: var(--texto-2); font-size: 13px; }
+  .ayuda { color: var(--texto-2); margin: 14px 0 0; }
+  .aviso { margin: 12px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--aviso-fondo); color: var(--aviso-texto); font-size: 12.5px; }
+  .enlace { border: 0; background: none; padding: 0; color: var(--enlace); cursor: pointer; font-weight: 500; margin-top: 12px; text-align: left; }
+
+  /* Placa de ruta: como los chips de ruta de cualquier app de transporte */
+  .placa { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 24px; padding: 0 6px;
+    border-radius: 4px; color: #fff; font-weight: 700; font-size: 13px; letter-spacing: .01em; flex: none; }
+  .placa.oscura { color: #1f2328; }
+  .placa.mediana { min-width: 52px; height: 32px; font-size: 16px; border-radius: 6px; }
+
+  /* llegadas */
+  .llegadas { list-style: none; margin: 10px 0 0; padding: 0; }
+  .llegadas li { display: grid; grid-template-columns: auto 1fr auto; gap: 0 10px; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--linea); cursor: pointer; }
+  .llegadas li:last-child { border-bottom: 0; }
+  .llegadas li:hover .l-destino { color: var(--enlace); }
+  .l-destino { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .l-detalle { color: var(--texto-2); font-size: 12.5px; line-height: 1.35; }
+  .l-min { text-align: right; font-size: 18px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
+  .l-min small { display: block; font-size: 11.5px; font-weight: 400; color: var(--texto-2); }
+  .l-min.ya { color: #d7141a; font-size: 15px; }
+  :root[data-tema="noche"] .l-min.ya { color: #ff6b6b; }
+
+  /* ruta */
+  .ruta-cab { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  .variante { display: grid; grid-template-columns: 28px 1fr; gap: 0 10px; width: 100%; text-align: left; margin-top: 8px;
+    padding: 10px 12px; border: 1px solid var(--linea); border-radius: 10px; background: none; cursor: pointer; }
+  .variante:hover { background: var(--suave); }
+  .variante[aria-pressed="true"] { border-color: var(--enlace); box-shadow: inset 0 0 0 1px var(--enlace); }
+  .variante svg { margin-top: 2px; }
+  .v-titulo { display: block; font-weight: 600; }
+  .v-linea { display: block; color: var(--texto-2); font-size: 12.5px; margin-top: 1px; }
+  .paso { grid-column: 2; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--linea); font-size: 13px; }
+  .paso strong { font-size: 15px; }
+  .resto { margin-top: 10px; color: var(--texto-2); font-size: 12.5px; }
+
+  .lista { list-style: none; margin: 8px 0 0; padding: 0; }
+  .lista button { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--linea); background: none;
+    padding: 10px 0; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
+  .lista li:last-child button { border-bottom: 0; }
+  .lista .n { font-weight: 600; }
+  .lista .d { color: var(--texto-2); }
+  .lista .r { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 3px; }
+  .lista .placa { min-width: 0; height: 20px; font-size: 11.5px; padding: 0 5px; border-radius: 3px; }
+
+  /* recorrido de un bus */
+  .recorrido { list-style: none; margin: 14px 0 0; padding: 0; }
+  .recorrido li { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    padding: 7px 0 7px 30px; min-height: 38px; }
+  .recorrido li::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 4px; background: var(--c); }
+  .recorrido li::after { content: ""; position: absolute; left: 5px; top: 50%; margin-top: -7px; width: 8px; height: 8px;
+    border-radius: 50%; border: 3px solid var(--c); background: var(--panel); }
+  .recorrido li:first-child::before { top: 50%; }
+  .recorrido li:last-child::before { bottom: 50%; }
+  .recorrido li.pasada::before { background: var(--linea); }
+  .recorrido li.pasada::after { border-color: var(--texto-3); }
+  .recorrido li.pasada .r-nombre { color: var(--texto-2); font-weight: 400; }
+  .recorrido li.aqui::before { background: linear-gradient(var(--linea) 50%, var(--c) 50%); }
+  .recorrido li.aqui::after { display: none; }
+  .recorrido li.proxima { cursor: pointer; }
+  .recorrido li.proxima:hover .r-nombre { color: var(--enlace); }
+  .r-bus { position: absolute; left: 1px; top: 50%; margin-top: -11px; width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center; z-index: 1; box-shadow: 0 0 0 2px var(--panel); }
+  .r-nombre { display: block; font-weight: 600; line-height: 1.25; }
+  .r-vagon { display: block; color: var(--texto-2); font-size: 12px; }
+  .r-hora { text-align: right; font-weight: 600; white-space: nowrap; }
+  .r-hora small { display: block; font-weight: 400; font-size: 11.5px; color: var(--texto-2); }
+  .recorrido li.pasada .r-hora { font-weight: 400; color: var(--texto-3); font-size: 12px; }
+
+  /* marcadores sobre el mapa */
+  .bus-sel { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center;
+    box-shadow: 0 0 0 3px var(--panel), 0 2px 10px rgba(0, 0, 0, .4); }
+  .chip { position: relative; display: inline-flex; width: max-content; align-items: center; gap: 5px; padding: 2px 6px 2px 2px; border-radius: 6px; background: var(--panel);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .3); font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--texto); cursor: pointer; }
+  /* Punta que señala la posición exacta del bus */
+  .chip::after { content: ""; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent;
+    border-bottom: 0; border-top-color: var(--panel); }
+  .chip .placa { min-width: 0; height: 18px; font-size: 11.5px; padding: 0 5px; border-radius: 4px; }
+  .chip.activo { outline: 2px solid var(--enlace); }
+
+  .maplibregl-popup-content { background: var(--panel); color: var(--texto); border-radius: 10px; padding: 9px 11px;
+    font-size: 13px; box-shadow: var(--sombra); }
+  .maplibregl-popup-tip { display: none; }
+  .pop-m { color: var(--texto-2); font-size: 12px; margin-top: 3px; }
+  :root[data-tema="noche"] .maplibregl-ctrl-group { background: var(--panel); }
+  :root[data-tema="noche"] .maplibregl-ctrl-group button + button { border-top-color: var(--linea); }
+  :root[data-tema="noche"] .maplibregl-ctrl-icon { filter: invert(1); }
+  :root[data-tema="noche"] .maplibregl-ctrl-attrib { background: rgba(24, 27, 31, .8) !important; }
+  :root[data-tema="noche"] .maplibregl-ctrl-attrib, :root[data-tema="noche"] .maplibregl-ctrl-attrib a { color: var(--texto-2) !important; }
+
+  /* modo grabación (R) */
+  .hud { display: none; position: absolute; left: 24px; bottom: 26px; padding: 14px 18px; border-radius: 12px;
+    background: var(--panel); box-shadow: var(--sombra); pointer-events: none; min-width: 260px; }
+  .hud .grande { font-size: 44px; font-weight: 700; line-height: 1; }
+  .hud .sub { margin-top: 4px; }
+  .hud .barra { margin: 10px 0 0; }
+  body.grabando .panel, body.grabando .maplibregl-ctrl-top-right { display: none; }
+  body.grabando .hud { display: block; }
+
+  @media (max-width: 680px) {
+    .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 56%; border-radius: 12px 12px 0 0; }
+    .cabeza { padding: 10px 14px 10px; }
+    .buscador { margin-top: 8px; }
+    .flota { margin-top: 8px; }
+    .leyenda { display: none; }
+    .cuerpo .aviso { display: none; } /* el estado de arriba ya avisa */
+    .cuerpo { padding: 0 14px 12px; }
+    .pie { padding: 6px 14px; font-size: 11px; }
+    .hud { left: 12px; right: 12px; bottom: 12px; }
+    .maplibregl-ctrl-bottom-right { top: 0; bottom: auto; }
+  }
