@@ -95,10 +95,69 @@ def un_bus(ruta: str) -> dict | None:
     return None
 
 
+class Demo:
+    """Animación corta para el README: pocos cuadros distintos, cada uno con su duración.
+
+    La cámara casi no se mueve entre cuadros, así que el WebP animado pesa poco aunque dure
+    unos 15 segundos.
+    """
+
+    def __init__(self, p, ancho: int = 960) -> None:
+        self.p, self.ancho, self.cuadros, self.duraciones = p, ancho, [], []
+
+    def foto(self, ms: int) -> None:
+        img = Image.open(BytesIO(self.p.screenshot())).convert("RGB")
+        img = img.resize((self.ancho, round(img.height * self.ancho / img.width)), Image.LANCZOS)
+        self.cuadros.append(img)
+        self.duraciones.append(ms)
+
+    def escribir(self, texto: str) -> None:
+        for i in range(1, len(texto) + 1):
+            self.p.fill("#q", texto[:i])
+            self.foto(110)
+        self.p.press("#q", "Enter")
+        listo(self.p)
+
+    def guardar(self, nombre: str) -> None:
+        self.cuadros[0].save(
+            SALIDA / f"{nombre}.webp",
+            save_all=True,
+            append_images=self.cuadros[1:],
+            duration=self.duraciones,
+            loop=0,
+            quality=70,
+            method=6,
+        )
+
+
+def demo(nav) -> None:
+    p = nav.new_context(viewport={"width": 1280, "height": 800}, locale="es-CO", color_scheme="light").new_page()
+    p.goto(URL)
+    p.evaluate("() => localStorage.setItem('tema', 'dia')")
+    p.reload()
+    abrir(p)
+    d = Demo(p)
+    d.foto(1800)
+    d.escribir("B10")
+    d.foto(2200)
+    if bus := un_bus("B10"):
+        p.evaluate("([n, pl]) => abrirBus(n, pl)", [bus["bus"], bus["placa"]])
+        listo(p)
+        d.foto(2600)
+    p.fill("#q", "")
+    d.escribir("Calle 72")
+    d.foto(2600)
+    p.click("#tema")
+    listo(p)
+    d.foto(2600)
+    d.guardar("demo")
+
+
 def main() -> None:
     SALIDA.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as pw:
         nav = pw.chromium.launch(channel="chrome", args=NAVEGADOR)
+        demo(nav)
         escritorio = {"viewport": {"width": 1280, "height": 800}, "device_scale_factor": 2, "locale": "es-CO"}
 
         p = nav.new_context(**escritorio, color_scheme="light").new_page()

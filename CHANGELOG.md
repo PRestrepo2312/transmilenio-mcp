@@ -13,7 +13,7 @@
   `historial_ruta` y `salud_feed`.
 - `transmilenio-veedor` guarda la flota cada minuto en SQLite (también `--veedor` en el mapa y
   en el MCP). Registra las caídas del feed sin contarlas como buses.
-- Capturas del mapa en el README, en WebP (`docs/capturas.py`, con GPU y sin fundidos).
+- Capturas del mapa y una demo animada (WebP, 270 KB) en el README; `docs/capturas.py` las regenera con GPU y sin fundidos.
 - CI con acciones al día, Ubuntu 24.04 fijo y Python 3.10, 3.12 y 3.14.
 - Los buses cuya ruta ya no está en el GTFS del día salen con ícono gris ("sin ruta").
 - Arreglo: el refresco del índice a veces se perdía si una consulta llegaba justo al terminar

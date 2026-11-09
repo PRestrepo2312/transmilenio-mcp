@@ -60,6 +60,8 @@ tocar un bus para ver sus próximas paradas y usar tu ubicación para saber cuá
 tu paradero. Tiene modo noche (automático de 6 p. m. a 6 a. m.) y la tecla `R` activa un
 modo para grabar video.
 
+![Buscar la ruta B10, abrir uno de sus buses, buscar la estación Calle 72 y pasar a modo noche](docs/img/demo.webp)
+
 | Una ruta y sus buses | Las próximas paradas de un bus |
 |---|---|
 | ![Ruta B10 con sus buses en vía](docs/img/ruta.webp) | ![Línea de tiempo de un bus del B10](docs/img/bus.webp) |
