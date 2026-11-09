@@ -1,6 +1,6 @@
 # Cambios
 
-## 0.1.0 (sin publicar)
+## 0.1.0 (9 de noviembre de 2026)
 
 - Servidor MCP con 8 herramientas: llegadas, buses_ruta, proximas_paradas, paraderos_cerca,
   buses_cerca, alertas, buscar_parada, estado_sistema.
