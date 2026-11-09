@@ -19,11 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This license covers the source code only. The transit data (GTFS and GTFS
-Realtime) belongs to TransMilenio S.A. and is published as open data under
-CC BY-SA 4.0. The index built from it (indice.json.gz) is a derived work and
-is distributed under the same CC BY-SA 4.0 license, with attribution to
-TransMilenio S.A.

@@ -154,7 +154,8 @@ personal, sin relación con la empresa.
 | GTFS Realtime (posiciones, viajes, alertas) | Anuncio oficial del 4-nov-2026 | [gtfs.transmilenio.gov.co](https://gtfs.transmilenio.gov.co/), [nota de la Alcaldía](https://bogota.gov.co/mi-ciudad/movilidad/2026-11/transmilenio-conecta-la-operacion-del-sistema-con-tecnologia-bogota) |
 
 Los datos tienen licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es);
-el índice que arma este proyecto es una obra derivada y lleva la misma licencia. El código es MIT.
+el índice que arma este proyecto es una obra derivada y lleva la misma licencia (ver
+[NOTICE](https://github.com/PRestrepo2312/transmilenio-mcp/blob/main/NOTICE)). El código es MIT.
 Dudas sobre los datos: radicacion@transmilenio.gov.co.
 
 [transmi-live](https://github.com/itsandresortiz/transmi-live) documentó con datos reales

@@ -1,0 +1,14 @@
+transmilenio-mcp
+Copyright (c) 2026 Pedro Restrepo
+
+El código está bajo la licencia MIT (ver LICENSE).
+
+Los datos de transporte (GTFS y GTFS Realtime) son de TransMilenio S.A. y se publican
+como datos abiertos bajo CC BY-SA 4.0. El índice que este proyecto arma a partir de
+ellos (indice.json.gz) es una obra derivada y se distribuye con la misma licencia
+CC BY-SA 4.0, con atribución a TransMilenio S.A.
+
+The source code is MIT licensed. Transit data (GTFS and GTFS Realtime) belongs to
+TransMilenio S.A. and is published as open data under CC BY-SA 4.0. The index built
+from it (indice.json.gz) is a derived work distributed under CC BY-SA 4.0, with
+attribution to TransMilenio S.A.
