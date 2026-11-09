@@ -4,19 +4,34 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Un push nuevo cancela la corrida anterior de la misma rama.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   pruebas:
-    runs-on: ubuntu-latest
+    name: pruebas (${{ matrix.python }})
+    # Imagen fija: ubuntu-latest está pasando a 26.04 y no siempre trae todas las versiones de Python.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
-        python: ["3.10", "3.12", "3.13"]
+        python: ["3.10", "3.12", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dev]"
-      - run: ruff check src tests
-      - run: ruff format --check src tests
+      - run: ruff check .
+      - run: ruff format --check .
       - run: pytest -q

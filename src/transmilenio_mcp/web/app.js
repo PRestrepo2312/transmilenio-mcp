@@ -27,7 +27,9 @@ const glifo = (sistema) => (sistema === "TransMiCable" ? GLIFO_CABLE : GLIFO_BUS
 const iconoSvg = (sistema, px = 13) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" aria-hidden="true">${glifo(sistema)}</svg>`;
 
 const ICONOS_MAPA = { dia: {}, noche: {} };
-const iconosListos = Promise.all(["dia", "noche"].flatMap((t) => Object.keys(SISTEMAS).map(async (s) => {
+// "" es el ícono gris de los buses cuya ruta no está en el GTFS del día (pasa cuando
+// TransMilenio renombra rutas y el feed aún trae las viejas).
+const iconosListos = Promise.all(["dia", "noche"].flatMap((t) => [...Object.keys(SISTEMAS), ""].map(async (s) => {
   const borde = t === "noche" ? "#181b1f" : "#ffffff";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 28 28"><rect x="1.2" y="1.2" width="25.6" height="25.6" rx="7" fill="${col(s)}" stroke="${borde}" stroke-width="2.2"/><g transform="translate(2 2)">${glifo(s)}</g></svg>`;
   const img = new Image(56, 56);
@@ -246,7 +248,7 @@ function resumen(d) {
   $("barra").innerHTML = barra;
   $("hud-barra").innerHTML = barra;
   $("flota-txt").innerHTML = `<strong class="num">${fmt.format(buses.size)}</strong> buses en vía` +
-    `<span class="leyenda">${orden.map(([s, n]) => `<span title="${esc(s)}"><span class="ico" style="background:${col(s)}">${iconoSvg(s, 12)}</span>${esc(s.replace("Zonal ", ""))} <span class="num">${fmt.format(n)}</span></span>`).join("")}</span>`;
+    `<span class="leyenda">${orden.map(([s, n]) => `<span title="${esc(s || "Ruta que no está en el GTFS de hoy")}"><span class="ico" style="background:${col(s)}">${iconoSvg(s, 12)}</span>${esc(s ? s.replace("Zonal ", "") : "sin ruta")} <span class="num">${fmt.format(n)}</span></span>`).join("")}</span>`;
   $("hud-total").textContent = fmt.format(buses.size);
   $("hud-hora").textContent = hora;
 }

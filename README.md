@@ -8,6 +8,8 @@ Desde el 4 de noviembre de 2026 TransMilenio publica la posición de sus buses c
 abiertos (GTFS Realtime). Este proyecto los conecta a Claude por MCP y trae un mapa para
 verlos en el navegador. Corre en tu computador y no pide API key ni registro.
 
+![Buses de TransMilenio sobre el mapa de Bogotá, de noche, alrededor de la Calle 72](docs/img/portada.webp)
+
 ```
 Tú:     ¿Qué buses llegan a Calle 72 en los próximos 5 minutos?
 Claude: H75 hacia Portal Usme, llegando (vagón B-2). A60, llegando.
@@ -57,6 +59,17 @@ Abre `http://127.0.0.1:8765`. Puedes buscar una ruta (C25) o una estación (Call
 tocar un bus para ver sus próximas paradas y usar tu ubicación para saber cuándo pasa por
 tu paradero. Tiene modo noche (automático de 6 p. m. a 6 a. m.) y la tecla `R` activa un
 modo para grabar video.
+
+| Una ruta y sus buses | Las próximas paradas de un bus |
+|---|---|
+| ![Ruta B10 con sus buses en vía](docs/img/ruta.webp) | ![Línea de tiempo de un bus del B10](docs/img/bus.webp) |
+| **Qué viene a una estación** | **De noche** |
+| ![Llegadas a Calle 72](docs/img/estacion.webp) | ![Llegadas a Calle 72 en modo noche](docs/img/estacion-noche.webp) |
+
+<p align="center"><img src="docs/img/movil.webp" alt="El mapa en el celular, ruta C25" width="300"></p>
+
+Las capturas son de la foto del feed del jueves 5 de noviembre a las 7:11 p. m. Se
+regeneran con `python docs/capturas.py`.
 
 ## Veedor: lo programado contra lo que sale a la calle
 
