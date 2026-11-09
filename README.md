@@ -8,7 +8,7 @@ Desde el 4 de noviembre de 2026 TransMilenio publica la posición de sus buses c
 abiertos (GTFS Realtime). Este proyecto los conecta a Claude por MCP y trae un mapa para
 verlos en el navegador. Corre en tu computador y no pide API key ni registro.
 
-![Buses de TransMilenio sobre el mapa de Bogotá, de noche, alrededor de la Calle 72](docs/img/portada.webp)
+![Buses de TransMilenio sobre el mapa de Bogotá, de noche, alrededor de la Calle 72](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/portada.webp)
 
 Un recorrido de 50 segundos: la flota completa, una estación, un bus, lo programado contra lo
 real y dos preguntas a Claude. Es la foto del feed del jueves 5 de noviembre a las 7:11 p. m.
@@ -65,15 +65,15 @@ tocar un bus para ver sus próximas paradas y usar tu ubicación para saber cuá
 tu paradero. Tiene modo noche (automático de 6 p. m. a 6 a. m.) y la tecla `R` activa un
 modo para grabar video.
 
-![Buscar la ruta B10, abrir uno de sus buses, buscar la estación Calle 72 y pasar a modo noche](docs/img/demo.webp)
+![Buscar la ruta B10, abrir uno de sus buses, buscar la estación Calle 72 y pasar a modo noche](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/demo.webp)
 
 | Una ruta y sus buses | Las próximas paradas de un bus |
 |---|---|
-| ![Ruta B10 con sus buses en vía](docs/img/ruta.webp) | ![Línea de tiempo de un bus del B10](docs/img/bus.webp) |
+| ![Ruta B10 con sus buses en vía](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/ruta.webp) | ![Línea de tiempo de un bus del B10](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/bus.webp) |
 | **Qué viene a una estación** | **De noche** |
-| ![Llegadas a Calle 72](docs/img/estacion.webp) | ![Llegadas a Calle 72 en modo noche](docs/img/estacion-noche.webp) |
+| ![Llegadas a Calle 72](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/estacion.webp) | ![Llegadas a Calle 72 en modo noche](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/estacion-noche.webp) |
 
-<p align="center"><img src="docs/img/movil.webp" alt="El mapa en el celular, ruta C25" width="300"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/movil.webp" alt="El mapa en el celular, ruta C25" width="300"></p>
 
 Las capturas son de la foto del feed del jueves 5 de noviembre a las 7:11 p. m. Se
 regeneran con `python docs/capturas.py`.

@@ -8,7 +8,14 @@ license = "MIT"
 authors = [{ name = "Pedro Restrepo" }]
 keywords = ["transmilenio", "bogota", "gtfs", "gtfs-realtime", "mcp", "transporte-publico"]
 classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Operating System :: OS Independent",
   "Natural Language :: Spanish",
   "Topic :: Scientific/Engineering :: GIS",
@@ -23,7 +30,9 @@ dependencies = [
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.urls]
-Repositorio = "https://github.com/prestrepo2312/transmilenio-mcp"
+Repositorio = "https://github.com/PRestrepo2312/transmilenio-mcp"
+Cambios = "https://github.com/PRestrepo2312/transmilenio-mcp/blob/main/CHANGELOG.md"
+Problemas = "https://github.com/PRestrepo2312/transmilenio-mcp/issues"
 
 [project.scripts]
 transmilenio-mcp = "transmilenio_mcp.servidor_mcp:main"
@@ -34,6 +43,10 @@ transmilenio-veedor = "transmilenio_mcp.recolector:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+# Las imágenes son del README; para instalar no hacen falta.
+exclude = ["docs/img", ".github"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/transmilenio_mcp"]
