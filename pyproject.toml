@@ -1,6 +1,6 @@
 [project]
 name = "transmilenio-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Buses de TransMilenio en vivo para Claude (MCP) y un mapa local. Sin API key: lee los datos abiertos de TransMilenio S.A."
 readme = "README.md"
 requires-python = ">=3.10"

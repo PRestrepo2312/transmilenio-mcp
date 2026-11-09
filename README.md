@@ -1,6 +1,7 @@
 # transmilenio-mcp
 
-[![CI](https://github.com/prestrepo2312/transmilenio-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/prestrepo2312/transmilenio-mcp/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/transmilenio-mcp)](https://pypi.org/project/transmilenio-mcp/)
+[![CI](https://github.com/PRestrepo2312/transmilenio-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/PRestrepo2312/transmilenio-mcp/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Licencia](https://img.shields.io/badge/licencia-MIT-green)
 
@@ -11,7 +12,7 @@ verlos en el navegador. Corre en tu computador y no pide API key ni registro.
 ![Buses de TransMilenio sobre el mapa de Bogotá, de noche, alrededor de la Calle 72](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/portada.webp)
 
 Un recorrido de 50 segundos: la flota completa, una estación, un bus, lo programado contra lo
-real y dos preguntas a Claude. Es la foto del feed del jueves 5 de noviembre a las 7:11 p. m.
+real y dos preguntas a Claude.
 
 https://github.com/user-attachments/assets/f2b6dca3-eee6-486f-959b-6c7155d7b6c1
 
@@ -24,6 +25,10 @@ Claude: H75 hacia Portal Usme, llegando (vagón B-2). A60, llegando.
 Cubre troncales, duales, alimentadores, SITP zonal y TransMiCable. El 5 de noviembre a las
 7 p. m. el feed tenía 7.730 buses en 665 rutas.
 
+> **Estado del feed.** El feed oficial de posiciones no se actualiza desde el jueves 5 de
+> noviembre a las 7:11 p. m. Las capturas y el video son de ese último dato, y mientras siga
+> así cada respuesta lo avisa.
+
 ## Instalar
 
 Hace falta [uv](https://docs.astral.sh/uv/) (`pip install uv`).
@@ -31,7 +36,7 @@ Hace falta [uv](https://docs.astral.sh/uv/) (`pip install uv`).
 **Claude Code**
 
 ```bash
-claude mcp add transmilenio -- uvx --from git+https://github.com/prestrepo2312/transmilenio-mcp transmilenio-mcp
+claude mcp add transmilenio -- uvx transmilenio-mcp
 ```
 
 **Claude Desktop**, en `claude_desktop_config.json`:
@@ -41,7 +46,7 @@ claude mcp add transmilenio -- uvx --from git+https://github.com/prestrepo2312/t
   "mcpServers": {
     "transmilenio": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/prestrepo2312/transmilenio-mcp", "transmilenio-mcp"]
+      "args": ["transmilenio-mcp"]
     }
   }
 }
@@ -57,7 +62,7 @@ hacer si el feed está detenido).
 ## Ver el mapa
 
 ```bash
-uvx --from git+https://github.com/prestrepo2312/transmilenio-mcp transmilenio-web
+uvx --from transmilenio-mcp transmilenio-web
 ```
 
 Abre `http://127.0.0.1:8765`. Puedes buscar una ruta (C25) o una estación (Calle 72),
@@ -75,8 +80,7 @@ modo para grabar video.
 
 <p align="center"><img src="https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/movil.webp" alt="El mapa en el celular, ruta C25" width="300"></p>
 
-Las capturas son de la foto del feed del jueves 5 de noviembre a las 7:11 p. m. Se
-regeneran con `python docs/capturas.py`.
+Las capturas se regeneran con `python docs/capturas.py`.
 
 ## Veedor: lo programado contra lo que sale a la calle
 
@@ -88,7 +92,7 @@ C25 esta semana?".
 Para eso hay que guardar el feed mientras pasa el día:
 
 ```bash
-uvx --from git+https://github.com/prestrepo2312/transmilenio-mcp transmilenio-veedor
+uvx --from transmilenio-mcp transmilenio-veedor
 ```
 
 Lee el feed una vez por minuto y lo guarda en un SQLite local (entre 5 y 10 MB por día). También
@@ -106,8 +110,8 @@ Un ejemplo con la foto del jueves 5 de noviembre a las 7:11 p. m.:
 | Dual | 268 | 225 | 119 % |
 | **Total** | **7.730** | **8.624** | **90 %** |
 
-Algunas zonales tenían menos de la mitad de sus buses (K904, L810, A516, D122). Una sola foto
-es una pista, no una conclusión. El recolector prendido varios días es lo que permite medir.
+Algunas zonales tenían menos de la mitad de sus buses (K904, L810, A516, D122). Con un solo
+momento no se puede sacar mucho; para medir hay que dejar el recolector prendido varios días.
 
 ## Qué se le puede preguntar
 
@@ -137,7 +141,7 @@ Si el feed deja de actualizarse (pasa de noche), cada respuesta trae un `aviso` 
 tiempos se calculan contra el último dato, no contra la hora actual. Un bus que lleva más
 de 5 minutos sin reportar no se usa para estimar llegadas.
 
-Más detalle en [docs/arquitectura.md](docs/arquitectura.md).
+Más detalle en [docs/arquitectura.md](https://github.com/PRestrepo2312/transmilenio-mcp/blob/main/docs/arquitectura.md).
 
 ## Datos y créditos
 

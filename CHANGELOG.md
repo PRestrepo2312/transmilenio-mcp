@@ -1,5 +1,10 @@
 # Cambios
 
+## 0.1.1 (9 de noviembre de 2026)
+
+- Publicado en PyPI: `uvx transmilenio-mcp`. Se sube desde GitHub Actions con Trusted Publishing.
+- El paquete fuente ya no lleva las imágenes del README.
+
 ## 0.1.0 (9 de noviembre de 2026)
 
 - Servidor MCP con 8 herramientas: llegadas, buses_ruta, proximas_paradas, paraderos_cerca,
