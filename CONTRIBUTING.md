@@ -5,7 +5,7 @@ Se aceptan issues y PRs. Si es un cambio grande, abre primero un issue para habl
 ```bash
 python -m venv .venv && .venv/Scripts/pip install -e ".[dev]"
 pytest -q
-ruff check src tests && ruff format src tests
+ruff check . && ruff format .
 ```
 
 - Las pruebas no deben usar internet. Si necesitas datos nuevos, regenera los fixtures con

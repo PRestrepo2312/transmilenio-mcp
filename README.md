@@ -10,6 +10,11 @@ verlos en el navegador. Corre en tu computador y no pide API key ni registro.
 
 ![Buses de TransMilenio sobre el mapa de Bogotá, de noche, alrededor de la Calle 72](docs/img/portada.webp)
 
+Un recorrido de 50 segundos: la flota completa, una estación, un bus, lo programado contra lo
+real y dos preguntas a Claude. Es la foto del feed del jueves 5 de noviembre a las 7:11 p. m.
+
+https://github.com/user-attachments/assets/f2b6dca3-eee6-486f-959b-6c7155d7b6c1
+
 ```
 Tú:     ¿Qué buses llegan a Calle 72 en los próximos 5 minutos?
 Claude: H75 hacia Portal Usme, llegando (vagón B-2). A60, llegando.
@@ -136,8 +141,8 @@ Más detalle en [docs/arquitectura.md](docs/arquitectura.md).
 
 ## Datos y créditos
 
-Los datos son de [TransMilenio S.A.](https://www.transmilenio.gov.co/). Este es un proyecto
-personal, sin relación con TransMilenio.
+Los datos son de [TransMilenio S.A.](https://www.transmilenio.gov.co/) y este es un proyecto
+personal, sin relación con la empresa.
 
 | Dato | Desde | Dónde |
 |---|---|---|
@@ -157,7 +162,8 @@ cómo se comporta el feed, y eso ahorró varias horas.
 python -m venv .venv
 .venv/Scripts/pip install -e ".[dev]"     # Linux/macOS: .venv/bin/pip
 pytest                                     # sin internet: usa feeds reales guardados en tests/fixtures
-ruff check src tests
+ruff check . && ruff format --check .
+python docs/capturas.py                    # capturas y demo del README (con el mapa abierto)
 transmilenio-web --no-abrir               # mapa local
 transmilenio-mcp --http --port 8000       # MCP por HTTP en /mcp
 ```
