@@ -92,17 +92,21 @@ class CargadorRed:
             self._hilo.start()
 
     def _cargar(self) -> None:
+        red, error = None, None
         try:
             red = Red(self._obtener())
-            self._red, self._cargada_en, self._error = red, self._reloj(), None
-            log("Red de rutas y paradas cargada.")
         except Exception as e:
-            self._error = e
-            log(f"No se pudo cargar la red: {e!r}")
-        finally:
-            with self._candado:
-                self._cargando = False
-            self._listo.set()
+            error = e
+        # La red nueva y el fin de la carga se publican juntos: si alguien veía la red nueva
+        # con _cargando todavía en True, el siguiente refresco se perdía.
+        with self._candado:
+            if red is not None:
+                self._red, self._cargada_en, self._error = red, self._reloj(), None
+            else:
+                self._error = error
+            self._cargando = False
+        self._listo.set()
+        log("Red de rutas y paradas cargada." if red is not None else f"No se pudo cargar la red: {error!r}")
 
     def _puede_reintentar(self) -> bool:
         return self._reloj() - self._ultimo_intento > config.INDICE_REINTENTO_S
