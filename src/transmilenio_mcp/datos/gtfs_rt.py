@@ -7,6 +7,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import NamedTuple
 
 import httpx
 from google.transit import gtfs_realtime_pb2 as gtfs
@@ -32,6 +33,17 @@ def _salida_programada(start_time: str, ts: int) -> str:
     reporte = dt.datetime.fromtimestamp(ts, _BOGOTA)
     diferencia = abs((h % 24) * 3600 + m * 60 + s - (reporte.hour * 3600 + reporte.minute * 60 + reporte.second))
     return "" if min(diferencia, 86400 - diferencia) <= 90 else start_time
+
+
+ESTADOS = {"SCHEDULED": "programado", "CANCELED": "cancelado", "ADDED": "añadido"}
+
+
+class EstadoViaje(NamedTuple):
+    viaje_id: str
+    ruta_id: str
+    fecha: str  # trip.start_date, "20261110"
+    salida: str  # hora programada, "HH:MM:SS" (puede pasar de 24 en viajes de madrugada)
+    estado: str  # "programado", "cancelado", "añadido" u otro en minúsculas
 
 
 @dataclass(frozen=True)
@@ -113,6 +125,23 @@ class FeedsRT:
         for e in self.leer("viajes").mensaje.entity:
             if e.HasField("trip_update") and e.trip_update.HasField("delay"):
                 out[e.trip_update.trip.trip_id] = e.trip_update.delay
+        return out
+
+    def estados_viajes(self) -> list[EstadoViaje]:
+        """Cada viaje del día con su estado según TransMilenio: programado, cancelado o añadido.
+
+        Desde el 10-nov-2026 `tripupdates.pb` trae todos los viajes del día de servicio, cada uno
+        con su hora programada de salida y su `schedule_relationship`, sin tiempos por parada.
+        """
+        out = []
+        for e in self.leer("viajes").mensaje.entity:
+            if not e.HasField("trip_update"):
+                continue
+            t = e.trip_update.trip
+            nombre = gtfs.TripDescriptor.ScheduleRelationship.Name(t.schedule_relationship)
+            out.append(
+                EstadoViaje(t.trip_id, t.route_id, t.start_date, t.start_time, ESTADOS.get(nombre, nombre.lower()))
+            )
         return out
 
     def alertas(self) -> list[gtfs.Alert]:

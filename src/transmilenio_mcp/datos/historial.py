@@ -8,6 +8,8 @@ El recolector (`transmilenio-veedor`) lee el feed cada minuto y guarda:
   máximo). Guardar cada foto serían ~1 M de filas al día; por hora son ~16 mil.
 - viajes: cada viaje visto (el trip_id del horario oficial), con su bus, cuándo se vio por
   primera y última vez, y el último retraso reportado.
+- estados: por ruta y hora, cuántos viajes del día marca TransMilenio como programados,
+  cancelados o añadidos (del feed de viajes; se guarda cada 10 minutos).
 
 Un día completo ocupa entre 5 y 10 MB. Se abre una conexión por operación: el recolector escribe
 y el MCP o el mapa leen al tiempo sin pisarse (modo WAL).
@@ -24,6 +26,7 @@ from pathlib import Path
 
 from .. import config
 from ..dominio.modelos import Vehiculo
+from .gtfs_rt import EstadoViaje
 
 BOGOTA = dt.timezone(dt.timedelta(hours=-5), "America/Bogota")
 
@@ -51,6 +54,14 @@ CREATE TABLE IF NOT EXISTS viajes (
     retraso_s INTEGER,
     PRIMARY KEY (fecha, viaje_id)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS estados (
+    fecha TEXT, ruta_id TEXT, hora INTEGER,  -- hora programada de salida
+    programados INTEGER,            -- siguen en pie (SCHEDULED)
+    cancelados INTEGER,             -- del horario, cancelados (CANCELED)
+    anadidos INTEGER,               -- fuera del horario (ADDED)
+    actualizado INTEGER,
+    PRIMARY KEY (fecha, ruta_id, hora)
+) WITHOUT ROWID;
 """
 
 
@@ -68,6 +79,18 @@ def _fecha_servicio(v: Vehiculo) -> str:
     if len(f) == 8 and f.isdigit():
         return f"{f[:4]}-{f[4:6]}-{f[6:]}"
     return fecha_hora(v.ts)[0]
+
+
+def contar_estados(estados: Iterable[EstadoViaje]) -> dict[tuple[str, str, int], list[int]]:
+    """(fecha ISO, ruta, hora de salida) -> [programados, cancelados, añadidos]."""
+    out: dict[tuple[str, str, int], list[int]] = {}
+    i = {"programado": 0, "cancelado": 1, "añadido": 2}
+    for e in estados:
+        if e.estado not in i or len(e.fecha) != 8 or not e.salida[:2].isdigit():
+            continue
+        clave = (f"{e.fecha[:4]}-{e.fecha[4:6]}-{e.fecha[6:]}", e.ruta_id, int(e.salida[:2]) % 24)
+        out.setdefault(clave, [0, 0, 0])[i[e.estado]] += 1
+    return out
 
 
 class Historial:
@@ -141,6 +164,33 @@ class Historial:
                 ],
             )
             return True
+
+    def registrar_estados(self, leido: float, conteos: dict[tuple[str, str, int], list[int]]) -> None:
+        """Guarda cuántos viajes programados, cancelados y añadidos hay por (fecha, ruta, hora).
+
+        El feed trae el día completo en cada lectura, así que la última lectura reemplaza a la
+        anterior. Una hora que deja de venir en el feed conserva lo último que se vio.
+        """
+        with self._conexion() as c:
+            c.executemany(
+                """INSERT INTO estados VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (fecha, ruta_id, hora) DO UPDATE SET
+                       programados = excluded.programados, cancelados = excluded.cancelados,
+                       anadidos = excluded.anadidos, actualizado = excluded.actualizado""",
+                [(f, r, h, p, ca, a, int(leido)) for (f, r, h), (p, ca, a) in conteos.items()],
+            )
+
+    def estados(self, fechas: Iterable[str]) -> list[tuple[str, str, int, int, int, int]]:
+        """(fecha, ruta_id, hora, programados, cancelados, añadidos)."""
+        fechas = list(fechas)
+        if not fechas:
+            return []
+        with self._conexion() as c:
+            return c.execute(
+                f"""SELECT fecha, ruta_id, hora, programados, cancelados, anadidos FROM estados
+                    WHERE fecha IN ({",".join("?" * len(fechas))})""",
+                fechas,
+            ).fetchall()
 
     # ------------------------------------------------------------ lectura
 

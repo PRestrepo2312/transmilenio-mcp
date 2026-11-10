@@ -33,6 +33,17 @@ RASTRO_MAX_PUNTOS = 12
 RASTREO_ACTIVO_S = 900
 RASTREO_PASO_S = 20
 
+# Tráfico por tramo, medido con la flota: cuánto tardan de verdad los buses frente al horario.
+TRAFICO_VENTANA_S = 1200  # solo cuenta lo de los últimos 20 minutos
+TRAFICO_MIN_MUESTRAS = 2
+TRAFICO_MUESTRAS = 30  # por tramo, las más recientes
+TRAFICO_MIN_S = 20  # trechos más cortos dicen poco (el reloj del GPS tiene su ruido)
+TRAFICO_MAX_S = 900
+# Se mide sobre al menos esto: así entran las esperas en semáforos y paradas.
+TRAFICO_VENTANA_MIN_S = 240
+TRAFICO_FACTOR_MIN = 0.3
+TRAFICO_FACTOR_MAX = 4.0
+
 GTFS_BUCKET = "gtfs-estaticos"
 INDICE_URL = os.environ.get("TRANSMI_INDICE_URL")
 INDICE_MAX_EDAD_H = 72
@@ -43,6 +54,9 @@ VEEDOR_INTERVALO_S = 60
 VEEDOR_DB = os.environ.get("TRANSMI_HISTORIAL")
 # Una hora cuenta como observada si tiene al menos esta fracción de las fotos esperadas.
 VEEDOR_COBERTURA_MIN = 0.5
+# Cada cuánto guarda el recolector los viajes programados/cancelados/añadidos del día. El feed
+# de viajes trae el día entero (~80 mil viajes); no cambia tanto como las posiciones.
+VEEDOR_ESTADOS_CADA_S = 600
 
 USER_AGENT = f"transmilenio-mcp/{__version__}"
 

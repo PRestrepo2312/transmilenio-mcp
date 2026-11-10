@@ -1,8 +1,9 @@
 """Cuánto le falta a un bus para llegar a una parada.
 
-TransMilenio reporta la posición y la última parada alcanzada, no la hora prevista en
-las siguientes. La estimación: qué parte del tramo actual ya recorrió el bus (por
-distancia en línea recta) más los tiempos de horario de los tramos que le quedan.
+TransMilenio reporta la posición, no la hora prevista en las siguientes paradas. La
+estimación: qué parte del tramo actual ya recorrió el bus (por distancia en línea recta)
+más el tiempo de los tramos que le quedan. Cada tramo vale lo que da el horario oficial,
+corregido por el tráfico que la flota midió ahí en los últimos minutos, si lo hay.
 """
 
 from __future__ import annotations
@@ -10,24 +11,31 @@ from __future__ import annotations
 from .. import config
 from .modelos import Recorrido, Vehiculo
 from .red import Red
-from .texto import distancia_m
+from .trafico import Trafico, avance
 
 
-def segundos_hasta(red: Red, v: Vehiculo, rec: Recorrido, k: int, j: int) -> float:
+def segundos_hasta(
+    red: Red, v: Vehiculo, rec: Recorrido, k: int, j: int, trafico: Trafico | None = None, ahora: float | None = None
+) -> float:
     """Desde el momento del reporte del bus hasta la parada j (j > k)."""
-    a, b = red.paradas.get(rec.paradas[k]), red.paradas.get(rec.paradas[k + 1])
-    tramo = rec.tiempos[k + 1] - rec.tiempos[k]
-    avance = 0.0
-    if a and b:
-        largo = distancia_m(a.lat, a.lon, b.lat, b.lon)
-        if largo > 1:
-            avance = min(1.0, distancia_m(a.lat, a.lon, v.lat, v.lon) / largo)
-    return (1 - avance) * tramo + (rec.tiempos[j] - rec.tiempos[k + 1])
+
+    def tramo(i: int) -> float:
+        base = rec.tiempos[i + 1] - rec.tiempos[i]
+        if trafico is not None:
+            f = trafico.factor(rec.paradas[i], rec.paradas[i + 1], ahora if ahora is not None else v.ts)
+            if f is not None:
+                return base * f
+        return base
+
+    falta = (1 - avance(red, rec, k, v.lat, v.lon)) * tramo(k)
+    return falta + sum(tramo(i) for i in range(k + 1, j))
 
 
-def segundos_desde_ref(red: Red, v: Vehiculo, rec: Recorrido, k: int, j: int, ref: float) -> int:
-    """Positivo: falta eso. Negativo: según el horario ya debió haber llegado."""
-    return int(v.ts + segundos_hasta(red, v, rec, k, j) - ref)
+def segundos_desde_ref(
+    red: Red, v: Vehiculo, rec: Recorrido, k: int, j: int, ref: float, trafico: Trafico | None = None
+) -> int:
+    """Positivo: falta eso. Negativo: según el cálculo ya debió haber llegado."""
+    return int(v.ts + segundos_hasta(red, v, rec, k, j, trafico, ref) - ref)
 
 
 def llegada_creible(en_s: int) -> bool:

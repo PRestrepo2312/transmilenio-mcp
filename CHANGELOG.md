@@ -1,5 +1,19 @@
 # Cambios
 
+## 0.1.3 (10 de noviembre de 2026)
+
+- Nueva herramienta `viajes_cancelados`: los viajes del día que TransMilenio marca como
+  cancelados o añadidos en su feed de viajes, por ruta, sistema y hora de salida. El día en
+  curso no necesita historial; el recolector guarda el resumen cada 10 minutos para comparar
+  días. El primer día medido (martes 10-nov, 1 p. m.): 7,2 % cancelado, 11,1 % en el zonal y
+  0,5 % en la troncal.
+- Las llegadas tienen en cuenta el tráfico del momento, medido con los mismos buses: lo que
+  tardaron en cada tramo en los últimos 20 minutos frente al horario. En un backtest de 35
+  minutos el error medio bajó de 2,1 a 1,7 minutos.
+- `buses_ruta` trae el `ritmo` de cada variante frente a su horario y `estado_sistema` cuántos
+  tramos tienen tráfico medido.
+- Mientras hay consultas, el hilo de fondo ubica toda la flota en cada lectura (para medir).
+
 ## 0.1.2 (10 de noviembre de 2026)
 
 El feed volvió el 10 de noviembre tras cinco días detenido, pero ya no trae una parada que

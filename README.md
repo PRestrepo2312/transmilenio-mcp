@@ -109,6 +109,12 @@ Un ejemplo con la foto del jueves 5 de noviembre a las 7:11 p. m.:
 Algunas zonales tenían menos de la mitad de sus buses (K904, L810, A516, D122). Con un solo
 momento no se puede sacar mucho; para medir hay que dejar el recolector prendido varios días.
 
+Los viajes cancelados no necesitan recolector para el día en curso: el feed de viajes trae
+todos los del día con su estado (programado, cancelado o añadido). El martes 10 de noviembre
+a la 1 p. m. el horario tenía 81.378 viajes y TransMilenio había marcado 5.866 como cancelados
+(7,2 %): 11,1 % en el zonal, 2,8 % en alimentadores y 0,5 % en la troncal. Para comparar días
+hay que guardarlos; el recolector lo hace cada 10 minutos.
+
 ## Qué se le puede preguntar
 
 | Herramienta | Ejemplo |
@@ -124,6 +130,7 @@ momento no se puede sacar mucho; para medir hay que dejar el recolector prendido
 | `programacion_ruta` | ¿Cuántos viajes tiene programados el C25 hoy? ¿A qué hora hay más B10? |
 | `ranking_rutas` | ¿Qué troncal tuvo menos buses de los programados entre 6 y 9 a. m.? ¿Cuál va más atrasada? |
 | `historial_ruta` | ¿Cómo le fue al H75 esta semana frente a su horario? |
+| `viajes_cancelados` | ¿Qué rutas cancelaron más viajes hoy? ¿Qué salidas del C25 se cayeron? |
 | `salud_feed` | ¿El feed de TransMilenio está al día? ¿Cuánto tiempo estuvo caído? |
 
 ## Cómo calcula las llegadas
@@ -136,9 +143,14 @@ dónde se ha movido el bus entre una lectura y otra. TransMilenio regenera el fe
 cada minuto, así que en la primera pregunta algunos buses aún no tienen sentido y la respuesta
 dice cuántos; en uno o dos minutos salen casi todos.
 
-Con el bus ubicado, la estimación toma qué parte del tramo actual ya recorrió y le suma los
-tiempos que el horario oficial da para los tramos que le faltan. No tiene en cuenta el tráfico
-del momento; eso está en la lista de pendientes.
+Con el bus ubicado, la estimación toma qué parte del tramo actual ya recorrió y le suma el
+tiempo de los tramos que le faltan. Ese tiempo sale del horario oficial, corregido por el
+tráfico del momento: Bogotá no publica velocidades en vivo, pero cada bus del feed sirve de
+sensor. Cuando un bus avanza por su recorrido se compara lo que tardó con lo que le daba el
+horario, y ese factor queda para el tramo (y para las otras rutas que pasan por ahí) durante
+20 minutos. Con 35 minutos del feed de un martes al mediodía, el error medio de las llegadas
+bajó de 2,1 a 1,7 minutos (de 3,6 a 2,8 en las que estaban a 10-20 minutos). `buses_ruta`
+dice además si una variante va más lenta o más rápida que su horario.
 
 Si el feed deja de actualizarse (pasa de noche), cada respuesta trae un `aviso` y los
 tiempos se calculan contra el último dato, no contra la hora actual. Un bus que lleva más

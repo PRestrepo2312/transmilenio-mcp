@@ -18,7 +18,7 @@ from collections import Counter, defaultdict
 from collections.abc import Callable
 
 from . import config
-from .datos.historial import BOGOTA, Historial
+from .datos.historial import BOGOTA, Historial, contar_estados
 from .dominio import estimacion as est
 from .dominio.red import Red
 from .dominio.texto import normalizar
@@ -28,6 +28,8 @@ CRITERIOS = ("buses", "cumplimiento", "retraso", "programados")
 DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 # Por debajo de esto un porcentaje de cumplimiento o un promedio de retraso dice poco.
 MIN_VIAJES = 5
+# En el ranking de cancelados: con menos viajes, 3 de 5 cancelados sale primero y dice poco.
+MIN_VIAJES_CANCELADOS = 10
 # Las cabinas del cable están en el horario (por frecuencia) pero no reportan en el feed en
 # vivo: compararlas daría 0 % siempre.
 SIN_FEED = {"TransMiCable"}
@@ -384,6 +386,134 @@ class Veedor:
             "rutas": rutas,
             "nota": "Solo cuentan las horas en que el recolector estuvo prendido. Los programados salen del "
             "horario oficial de hoy aplicado a cada fecha.",
+        }
+
+    # ------------------------------------------------------------ viajes cancelados
+
+    def cancelaciones(
+        self,
+        ruta: str | None = None,
+        fecha: str | None = None,
+        desde_hora: int | None = None,
+        hasta_hora: int | None = None,
+        sistema: str | None = None,
+        orden: str = "mas",
+        limite: int = 10,
+    ) -> dict:
+        """Viajes que TransMilenio marca como cancelados (y los añadidos) frente a los programados.
+
+        Hoy sale del feed de viajes en vivo, que trae el día completo; otros días, de lo que
+        guardó el recolector. Sin ruta: totales, por sistema y ranking de rutas por porcentaje
+        cancelado. Con ruta: el detalle por hora y, si es hoy, las salidas canceladas.
+        """
+        red = self.servicio.cargador.red()
+        try:
+            d = self._dia(fecha)
+        except ValueError:
+            return {"error": f"Fecha no válida: «{fecha}». Usa hoy, ayer o AAAA-MM-DD."}
+        iso, hoy = d.isoformat(), d == self._hoy()
+        horas = set(self._horas(desde_hora, hasta_hora))
+        ids = None
+        if ruta:
+            ids = red.resolver_ruta(ruta)
+            if not ids:
+                return {"error": f"No existe la ruta «{ruta}».", "parecidas": red.parecidas(ruta)}
+
+        salidas_canceladas: dict[str, list[str]] = defaultdict(list)
+        if hoy:
+            estados = [e for e in self.servicio.feeds.estados_viajes() if e.fecha == d.strftime("%Y%m%d")]
+            conteos = contar_estados(estados)
+            if conteos:
+                self.historial.registrar_estados(self._reloj(), conteos)
+            if ids:
+                for e in estados:
+                    cancelado = e.ruta_id in ids and e.estado == "cancelado" and e.salida[:2].isdigit()
+                    if cancelado and int(e.salida[:2]) % 24 in horas:
+                        salidas_canceladas[e.ruta_id].append(e.salida[:5])
+            filas = [(f, r, h, *v) for (f, r, h), v in conteos.items()]
+        else:
+            filas = self.historial.estados([iso])
+        if not filas:
+            return {
+                "fecha": iso,
+                "sin_datos": True,
+                "mensaje": (
+                    "El feed de viajes no trae viajes de hoy."
+                    if hoy
+                    else "No hay viajes guardados de ese día. El feed solo trae el día en curso; para "
+                    "días anteriores hay que haber tenido prendido `transmilenio-veedor` (o haber "
+                    "consultado ese día)."
+                ),
+            }
+
+        permitidas = set(ids) if ids else set(self._rutas(red, sistema)) if sistema else None
+        por_ruta: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
+        por_ruta_hora: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(lambda: [0, 0, 0]))
+        for _f, rid, h, p, c, a in filas:
+            if h not in horas or (permitidas is not None and rid not in permitidas):
+                continue
+            for acum in (por_ruta[rid], por_ruta_hora[rid][h]):
+                acum[0] += p
+                acum[1] += c
+                acum[2] += a
+
+        def cifras(p: int, c: int, a: int) -> dict:
+            prog = p + c  # los cancelados eran parte del horario
+            return {
+                "programados": prog,
+                "cancelados": c,
+                "pct_cancelado": round(100 * c / prog, 1) if prog else None,
+                "anadidos": a,
+            }
+
+        base = {
+            "fecha": iso,
+            "tipo_dia": self._tipo_dia(red, d),
+            "fuente": "feed de viajes en vivo" if hoy else "historial local",
+            "nota": "Es lo que el mismo TransMilenio marca en su feed de viajes (tripupdates): cancelado "
+            "o añadido frente al horario. No verifica si el bus salió o no.",
+        }
+        if desde_hora is not None or hasta_hora is not None:
+            base["franja"] = f"{_h(min(horas))}-{_h(max(horas) + 1)}"
+
+        if ids:
+            rutas = []
+            for rid in ids:
+                if rid not in por_ruta:
+                    continue
+                item = {**self._ficha(red, rid), "ruta_id": rid, **cifras(*por_ruta[rid])}
+                salidas, _ = red.programado(rid, d)
+                item["programados_gtfs"] = sum(salidas[h] for h in horas)
+                item["por_hora"] = [
+                    {"hora": _h(h), **cifras(*v)} for h, v in sorted(por_ruta_hora[rid].items()) if any(v)
+                ]
+                if salidas_canceladas.get(rid):
+                    item["salidas_canceladas"] = sorted(salidas_canceladas[rid])[:60]
+                rutas.append(item)
+            if not rutas:
+                return {**base, "ruta": red.rutas[ids[0]].codigo, "rutas": [], "mensaje": "Sin viajes de esa ruta."}
+            return {**base, "ruta": red.rutas[ids[0]].codigo, "rutas": rutas}
+
+        total = [sum(v[i] for v in por_ruta.values()) for i in range(3)]
+        sistemas: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
+        for rid, v in por_ruta.items():
+            s = self._ficha(red, rid)["sistema"] or "Sin ruta en el GTFS"
+            for i in range(3):
+                sistemas[s][i] += v[i]
+        ranking = [
+            {**self._ficha(red, rid), "ruta_id": rid, **cifras(*v)}
+            for rid, v in por_ruta.items()
+            if v[0] + v[1] >= MIN_VIAJES_CANCELADOS
+        ]
+        mas = orden.strip().lower() != "menos"
+        ranking.sort(key=lambda x: (x["pct_cancelado"], x["cancelados"]), reverse=mas)
+        return {
+            **base,
+            "total": cifras(*total),
+            "rutas_con_cancelados": sum(1 for v in por_ruta.values() if v[1]),
+            "por_sistema": {s: cifras(*v) for s, v in sorted(sistemas.items(), key=lambda kv: -(kv[1][0] + kv[1][1]))},
+            "orden": "más canceladas primero" if mas else "menos canceladas primero",
+            "rutas": ranking[: _acotar(limite, 1, 50)],
         }
 
     # ------------------------------------------------------------ el feed mismo

@@ -25,12 +25,14 @@ servidor MCP `transmilenio`.
 | ¿Qué ruta tiene más o menos buses frente a lo programado? | `ranking_rutas` con `criterio="buses"` |
 | ¿Qué rutas cumplen menos su horario en la hora pico? | `ranking_rutas` con `criterio="cumplimiento"`, `orden="menos"`, `desde_hora=6`, `hasta_hora=9` |
 | ¿Cómo le fue al H75 esta semana? | `historial_ruta` |
+| ¿Qué rutas cancelaron más viajes hoy? ¿Qué salidas del C25 se cayeron? | `viajes_cancelados` (con `ruta` para el detalle) |
 | ¿El feed está caído? ¿Cuánto tiempo? | `salud_feed` |
 
 ## Cómo leer los datos
 
 - `ultima_parada` es la última que el bus ya pasó. La siguiente está en `siguiente_parada`.
-- `llega_en_min` es una estimación (posición del bus en su tramo más tiempos del horario). Dilo como "unos 3 minutos".
+- `llega_en_min` es una estimación (posición del bus en su tramo más el tiempo de cada tramo, corregido con el tráfico que midieron los buses en los últimos 20 minutos). Dilo como "unos 3 minutos".
+- `ritmo` (en `buses_ruta`) dice si esa variante va más lenta o más rápida que su horario ahora mismo; úsalo si preguntan cómo está el tráfico de una ruta.
 - `retraso_s` positivo: va tarde frente al horario. Negativo: adelantado.
 - `sentido` viene como "Sur-Norte", "Nororiente-Suroccidente" o, en las circulares, "Hacia Unicentro" o "Regresa a Engativá".
 - Un mismo código puede tener varias variantes (C25 troncal y C25 zonal). Si el usuario no dijo cuál, menciona las dos.
@@ -49,6 +51,7 @@ servidor MCP `transmilenio`.
 - Menciona `horas_observadas` y `horas_sin_datos`: una hora sin datos no es una hora sin buses.
 - Una foto o un día son una pista. Para afirmar que una ruta incumple, pide varios días.
 - TransMiCable no entra en las comparaciones: sus cabinas no reportan en el feed.
+- `viajes_cancelados` es lo que TransMilenio mismo marca en su feed de viajes; no verifica si el bus salió. Hoy siempre hay datos; otros días solo si se guardaron (`sin_datos`). `programados` incluye los cancelados, que eran del horario; `anadidos` son viajes fuera del horario.
 
 ## Cómo responder
 

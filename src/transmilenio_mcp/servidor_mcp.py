@@ -25,11 +25,13 @@ SITP zonal y TransMiCable), leídos de los feeds GTFS Realtime públicos de Tran
 - Cerca del usuario: `paraderos_cerca` o `buses_cerca`.
 - Desvíos y cierres: `alertas`.
 - Veedor (lo programado contra lo real): `programacion_ruta`, `ranking_rutas`, `historial_ruta`,
-  `salud_feed`. Lo observado sale del historial que guarda `transmilenio-veedor`; si viene
+  `viajes_cancelados`, `salud_feed`. Lo observado sale del historial que guarda `transmilenio-veedor`; si viene
   `sin_historial`, dilo y explica que hay que dejar ese comando corriendo.
 - `ultima_parada` es la última a la que el bus YA llegó, no la siguiente.
 - Los tiempos de llegada son estimados; dilo así.
 - Si la respuesta trae `aviso`, el feed oficial está detenido o falló: dilo antes de dar datos.
+- `ritmo` en una variante de `buses_ruta`: cómo va frente al horario según lo que tardaron sus
+  buses en los últimos 20 minutos ("15 % más lento que el horario").
 - Si trae `nota_sentido` o `aviso_sentido`, faltan buses cuyo sentido aún no se conoce: dilo
   y sugiere volver a preguntar en uno o dos minutos.
 - Responde en español y menciona que los datos son de TransMilenio S.A.
@@ -179,6 +181,27 @@ def historial_ruta(ruta: str, dias: int = 7, fecha: str | None = None) -> dict:
     contra programados, retraso promedio y el perfil por hora. `fecha` es el último día.
     """
     return veedor().historial_ruta(ruta, dias, fecha)
+
+
+@herramienta
+def viajes_cancelados(
+    ruta: str | None = None,
+    fecha: str | None = None,
+    desde_hora: int | None = None,
+    hasta_hora: int | None = None,
+    sistema: str | None = None,
+    orden: str = "mas",
+    limite: int = 10,
+) -> dict:
+    """Viajes que TransMilenio marca como cancelados o añadidos frente a su horario.
+
+    Sin `ruta`: total del día, por sistema y las rutas con más (o menos, `orden="menos"`)
+    porcentaje de viajes cancelados. Con `ruta`: detalle por hora y, si es hoy, las horas de
+    salida canceladas. `fecha`: "hoy" (sale del feed en vivo, sin historial), "ayer" o
+    "2026-11-10" (de lo guardado). `desde_hora`/`hasta_hora`: franja por hora de salida.
+    Sirve para "¿qué rutas cancelaron más viajes hoy?" o "¿cuántos viajes del C25 se cayeron?".
+    """
+    return veedor().cancelaciones(ruta, fecha, desde_hora, hasta_hora, sistema, orden, limite)
 
 
 @herramienta

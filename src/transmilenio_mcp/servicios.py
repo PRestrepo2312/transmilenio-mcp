@@ -20,6 +20,7 @@ from .dominio import estimacion as est
 from .dominio.modelos import Recorrido, Vehiculo
 from .dominio.red import Red
 from .dominio.texto import distancia_m, normalizar, rumbo
+from .dominio.trafico import Trafico
 
 BOGOTA = dt.timezone(dt.timedelta(hours=-5), "America/Bogota")
 
@@ -37,7 +38,10 @@ EFECTOS = {
     "UNKNOWN_EFFECT": "desconocido",
 }
 
-NOTA_ESTIMACION = "Estimado con la posición del bus en su tramo y los tiempos del horario oficial."
+NOTA_ESTIMACION = (
+    "Estimado con la posición del bus y lo que tardaron los buses en cada tramo en los últimos "
+    "20 minutos; donde no hay medida, con el horario oficial."
+)
 NOTA_SENTIDO = (
     "{n} bus(es) de estas rutas aún no tienen sentido conocido y no se incluyen: el feed no dice "
     "hacia dónde va cada bus y se deduce de su movimiento entre lecturas, que TransMilenio publica "
@@ -148,9 +152,12 @@ class Rastro:
     por la misma vía: lo único que las separa es hacia dónde se ha movido el bus.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, trafico: Trafico | None = None) -> None:
         self._pos: dict[str, deque[tuple[int, float, float]]] = {}
         self._previa: dict[str, tuple[str, int]] = {}
+        # Ubicaciones recientes de cada bus con su punto (ts, lat, lon): de ahí sale el tráfico.
+        self._ultima: dict[str, deque[tuple[Recorrido, int, tuple[int, float, float]]]] = {}
+        self.trafico = trafico or Trafico()
         self._cache: dict[str, tuple[int, tuple[Recorrido, int] | None]] = {}
         self._red: Red | None = None
         self._candado = threading.RLock()  # el hilo de rastreo anota mientras se consulta
@@ -163,7 +170,7 @@ class Rastro:
                     q.append((v.ts, v.lat, v.lon))
             if len(self._pos) > 3 * max(1, len(vehiculos)):
                 vivos = {v.id for v in vehiculos}
-                for d in (self._pos, self._previa, self._cache):
+                for d in (self._pos, self._previa, self._cache, self._ultima):
                     for k in [k for k in d if k not in vivos]:
                         del d[k]
 
@@ -183,7 +190,7 @@ class Rastro:
     def ubicar(self, red: Red, v: Vehiculo) -> tuple[Recorrido, int] | None:
         with self._candado:
             if red is not self._red:  # red nueva: los índices de los recorridos cambian
-                self._red, self._cache, self._previa = red, {}, {}
+                self._red, self._cache, self._previa, self._ultima = red, {}, {}, {}
             hit = self._cache.get(v.id)
             if hit and hit[0] == v.ts:
                 return hit[1]
@@ -191,7 +198,35 @@ class Rastro:
             self._cache[v.id] = (v.ts, ubic)
             if ubic:
                 self._previa[v.id] = (ubic[0].clave, ubic[1])
+                self._medir(red, v, ubic)
             return ubic
+
+    def _medir(self, red: Red, v: Vehiculo, ubic: tuple[Recorrido, int]) -> None:
+        """Compara con dónde iba el mismo bus hace unos minutos, en el mismo recorrido.
+
+        Entre lecturas seguidas (~1 min) un bus detenido en un semáforo o una parada no avanza y
+        la medida se descarta; con eso el tráfico salía optimista. Con varios minutos de por medio
+        las esperas quedan dentro de lo medido.
+        """
+        rec, k = ubic
+        punto = (v.ts, v.lat, v.lon)
+        hist = self._ultima.get(v.id)
+        if hist is None or (hist and hist[-1][0] is not rec):
+            hist = self._ultima[v.id] = deque(maxlen=40)  # otro recorrido: otro viaje
+        while hist and v.ts - hist[0][2][0] > config.TRAFICO_MAX_S:
+            hist.popleft()
+        if hist and hist[-1][2][0] >= v.ts:
+            return
+        ancla = hist[0] if hist and v.ts - hist[0][2][0] >= config.TRAFICO_VENTANA_MIN_S else None
+        if ancla:
+            self.trafico.observar(red, rec, ancla[1], ancla[2], k, punto)
+        hist.append((rec, k, punto))
+
+    def ubicar_todos(self, red: Red, vehiculos: list[Vehiculo], ref: float) -> None:
+        """Ubica toda la flota: así el tráfico se mide aunque nadie esté preguntando por esos buses."""
+        for v in vehiculos:
+            if est.reporte_vigente(v, ref):
+                self.ubicar(red, v)
 
 
 # ---------------------------------------------------------------- foto de la flota
@@ -250,7 +285,9 @@ class Servicio:
             time.sleep(config.RASTREO_PASO_S)
             # Una lectura fallida no importa: la siguiente vuelve a intentar.
             with contextlib.suppress(Exception):
-                self.rastro.anotar(self.feeds.vehiculos()[0])
+                vehs = self.feeds.vehiculos()[0]
+                self.rastro.anotar(vehs)
+                self.rastro.ubicar_todos(self.cargador.red(), vehs, self._reloj())
 
     def _foto(self) -> Foto:
         red = self.cargador.red()
@@ -369,7 +406,7 @@ class Servicio:
             j = next((i for i in range(k + 1, len(rec.paradas)) if rec.paradas[i] in objetivo), None)
             if j is None:
                 continue
-            en_s = est.segundos_desde_ref(red, v, rec, k, j, f.ref)
+            en_s = est.segundos_desde_ref(red, v, rec, k, j, f.ref, f.rastro.trafico)
             if not est.llegada_creible(en_s) or en_s > horizonte:
                 continue
             en_s = max(0, en_s)
@@ -502,6 +539,8 @@ class Servicio:
         }
         if len(por_sentido) > 1:
             item["buses_por_sentido"] = dict(por_sentido)
+        if ritmo := f.rastro.trafico.ritmo(rec, f.ref):
+            item["ritmo"] = ritmo
         if trazado:
             item["trazado"] = [[red.paradas[s].lat, red.paradas[s].lon] for s in rec.paradas if s in red.paradas]
         if lat is not None and lon is not None:
@@ -526,7 +565,7 @@ class Servicio:
             j = next((x for x in range(k + 1, len(r2.paradas)) if r2.paradas[x] == mejor), None)
             if j is None:
                 continue
-            en_s = est.segundos_desde_ref(red, v, r2, k, j, f.ref)
+            en_s = est.segundos_desde_ref(red, v, r2, k, j, f.ref, f.rastro.trafico)
             if est.llegada_creible(en_s):
                 proximos.append(
                     {"bus": v.numero, "llega_en_min": round(max(0, en_s) / 60, 1), "paradas_antes": j - k - 1}
@@ -586,7 +625,7 @@ class Servicio:
             if p.estacion_id:
                 item["vagon"] = p.nombre
             if j > k:
-                en_s = est.segundos_desde_ref(red, v, rec, k, j, f.ref)
+                en_s = est.segundos_desde_ref(red, v, rec, k, j, f.ref, f.rastro.trafico)
                 if est.llegada_creible(en_s):
                     en_s = max(0, en_s)
                     item["llega_en_min"] = round(en_s / 60, 1)
@@ -711,6 +750,7 @@ class Servicio:
             "rutas_activas": len({v.ruta_id for v in f.vehiculos}),
             **f.publico,
             "cabecera_feed": _iso(cab.timestamp) if cab.timestamp else None,
+            "tramos_con_trafico_medido": f.rastro.trafico.tramos_medidos(f.ref),
             "gtfs_estatico": f.red.info_gtfs,
             "feeds": {k: config.RT_BASE + v for k, v in config.FEEDS.items()},
             "fuente": FUENTE,

@@ -21,7 +21,7 @@ from collections.abc import Callable
 from . import config
 from .config import log
 from .datos.gtfs_rt import FeedsRT
-from .datos.historial import Historial
+from .datos.historial import Historial, contar_estados
 
 
 def una_vuelta(feeds: FeedsRT, historial: Historial, ahora: float) -> tuple[bool, int, int]:
@@ -46,8 +46,15 @@ def recolectar(
 ) -> None:
     estado_previo = None
     hechas = 0
+    ultimos_estados = float("-inf")
     while vueltas is None or hechas < vueltas:
         inicio = reloj()
+        if inicio - ultimos_estados >= config.VEEDOR_ESTADOS_CADA_S:
+            try:
+                historial.registrar_estados(inicio, contar_estados(feeds.estados_viajes()))
+                ultimos_estados = inicio
+            except Exception as e:
+                log(f"No se pudieron guardar los viajes cancelados: {e!r}")
         try:
             nueva, buses, edad = una_vuelta(feeds, historial, inicio)
             # La primera lectura de un feed detenido también es "nueva" para el historial (se

@@ -37,9 +37,22 @@ la mediana del tiempo desde la primera parada. Sale un archivo de 0,4 MB que car
 segundo. Una GitHub Action lo puede publicar ya armado (`TRANSMI_INDICE_URL`).
 
 **Las llegadas se estiman, no se leen.** Los feeds no traen la hora prevista en las siguientes
-paradas. La estimación (`dominio/estimacion.py`) usa la posición del bus dentro de su tramo y los
-tiempos del horario. Se descartan buses que llevan más de 5 minutos sin reportar y llegadas que,
-según el cálculo, debieron ocurrir hace más de 2 minutos.
+paradas. La estimación (`dominio/estimacion.py`) usa la posición del bus dentro de su tramo y el
+tiempo de cada tramo que le falta: el del horario por el factor de tráfico medido. Se descartan
+buses que llevan más de 5 minutos sin reportar y llegadas que, según el cálculo, debieron ocurrir
+hace más de 2 minutos.
+
+**Tráfico con la flota como sensor** (`dominio/trafico.py`). Cada vez que se ubica un bus se
+compara con dónde iba el mismo bus, en el mismo recorrido, hace entre 4 y 15 minutos: tiempo real
+contra lo que da el horario para ese trecho. El cociente queda como muestra en cada tramo recorrido
+(par de paradas, compartido entre rutas). El factor de un tramo es la mediana de sus muestras de
+los últimos 20 minutos, con al menos 2. La ventana mínima importa: entre lecturas seguidas (~1 min)
+un bus detenido en un semáforo no avanza, la medida se descarta y el factor sale optimista; así
+medido, el backtest daba llegadas 4 minutos adelantadas a 10-20 minutos. Backtest del 10-nov
+(35 min al mediodía, 222 mil llegadas verificadas con lecturas posteriores): error medio 2,09 →
+1,70 min; 0-5 min 1,26 → 1,11; 5-10 min 2,45 → 1,91; 10-20 min 3,58 → 2,78; sesgo +0,13 → -0,12.
+La verdad sale de la misma ubicación geométrica, así que no corrige sus errores; y es un solo
+rato de un día: falta repetirlo en hora pico. Con 7 minutos de ventana mínima da lo mismo.
 
 **El bus se ubica por geometría.** Hasta el 5-nov-2026 el feed traía `stop_id` y
 `current_stop_sequence` coherentes con la posición. Desde el 10-nov ya no: la parada reportada
@@ -71,9 +84,18 @@ HH:30. El calendario (`calendar.txt` y `calendar_dates.txt`) dice qué servicios
 así un lunes festivo usa el horario de domingo. Lo observado lo guarda `recolector.py`: por hora y
 ruta, la suma y el máximo de buses en las fotos, y cada viaje visto por su `trip_id` (estable
 mientras dura el viaje). Si el feed no trae la hora programada de salida, como pasa desde el
-10-nov-2026, el viaje cuenta en la hora en que se vio por primera vez. Solo se comparan horas con al menos la mitad de las fotos esperadas, para que un
-rato con el recolector apagado no parezca un rato sin buses. TransMiCable queda fuera de las
-comparaciones porque sus cabinas no reportan en el feed.
+10-nov-2026, el viaje cuenta en la hora en que se vio por primera vez. Solo se comparan horas
+con al menos la mitad de las fotos esperadas, para que un rato con el recolector apagado no
+parezca un rato sin buses. TransMiCable queda fuera de las comparaciones porque sus cabinas no
+reportan en el feed.
+
+**Viajes cancelados.** Desde el 10-nov-2026 `tripupdates.pb` trae todos los viajes del día de
+servicio (~83 mil), cada uno con su hora programada y un `schedule_relationship`: SCHEDULED,
+CANCELED o ADDED. No trae tiempos por parada. Los programados más los cancelados coinciden con
+los viajes del GTFS de ese día (el C25 zonal, 105 y 105). `viajes_cancelados` cuenta por ruta y
+hora de salida: el día en curso sale del feed y queda guardado en la tabla `estados`; otros días
+salen de esa tabla, que el recolector actualiza cada 10 minutos. Es lo que declara el operador,
+no una verificación de que el bus salió.
 
 **Una caída del feed no se cuenta como buses.** Si el último reporte no cambia entre lecturas, se
 anota la lectura (para `salud_feed`) y no se suma nada.
@@ -89,6 +111,5 @@ pruebas no usan internet. Para regenerarlos está `tests/crear_fixtures.py`.
 
 ## Pendiente
 
-- Usar los propios buses para medir los tiempos reales entre paradas (tráfico del momento).
 - Intervalos reales entre buses de una misma ruta en una parada (frecuencia vista vs. programada).
 - Versión del mapa para GitHub Pages con un proxy CORS (el feed no envía cabeceras CORS).
