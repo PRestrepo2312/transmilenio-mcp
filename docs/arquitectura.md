@@ -36,10 +36,25 @@ instalación le pide a TransMilenio como mucho una lectura por feed cada 15 segu
 la mediana del tiempo desde la primera parada. Sale un archivo de 0,4 MB que carga en menos de un
 segundo. Una GitHub Action lo puede publicar ya armado (`TRANSMI_INDICE_URL`).
 
-**Las llegadas se estiman, no se leen.** `tripupdates.pb` solo trae la última parada alcanzada y
-el retraso. La estimación (`dominio/estimacion.py`) usa la posición del bus dentro de su tramo y los
+**Las llegadas se estiman, no se leen.** Los feeds no traen la hora prevista en las siguientes
+paradas. La estimación (`dominio/estimacion.py`) usa la posición del bus dentro de su tramo y los
 tiempos del horario. Se descartan buses que llevan más de 5 minutos sin reportar y llegadas que,
 según el cálculo, debieron ocurrir hace más de 2 minutos.
+
+**El bus se ubica por geometría.** Hasta el 5-nov-2026 el feed traía `stop_id` y
+`current_stop_sequence` coherentes con la posición. Desde el 10-nov ya no: la parada reportada
+queda en la mediana a 6 km del bus, `start_time` es la hora del reporte y los `trip_id` no están
+en el GTFS. Solo la posición, la ruta y el bus son confiables. `Red.ubicar` usa la parada del feed
+si queda a menos de 400 m del bus (así sigue sirviendo si TransMilenio lo corrige); si no, busca
+el tramo (recta entre dos paradas seguidas) de los recorridos de la ruta más cercano al bus, a
+menos de 250 m. Ida y vuelta por la misma vía empatan en distancia: las separa el rumbo del bus,
+que sale de `Rastro` (sus posiciones de los últimos 7 minutos, en memoria). Sin rumbo y con tramos
+empatados en sentidos opuestos, el bus no se ubica: mejor faltar que dar una llegada falsa (la
+regla "va por la derecha, más cerca de sus paraderos" acertó solo el 73 % en los zonales). Como
+TransMilenio regenera el feed cada 60-75 s, tras cada consulta un hilo sigue leyendo el feed
+15 minutos para que la siguiente encuentre el rastro al día. Medido el 10-nov al mediodía: en
+frío se ubica el 56 % de la flota, tras un minuto el 88 % y luego 93-95 %; dos minutos después el
+94 % de los ubicados sigue en la misma variante y más adelante.
 
 **Una variante es un recorrido, no un código.** El código C25 existe como troncal y como zonal, y
 cada uno puede tener ida, regreso o recorridos cortos. El filtro y el sentido se calculan por
@@ -54,8 +69,9 @@ Unicentro" o "Regresa a Engativá").
 con eso, por ruta y `service_id`, cuántos viajes salen en cada hora y cuántos están andando a cada
 HH:30. El calendario (`calendar.txt` y `calendar_dates.txt`) dice qué servicios operan cada día,
 así un lunes festivo usa el horario de domingo. Lo observado lo guarda `recolector.py`: por hora y
-ruta, la suma y el máximo de buses en las fotos, y cada viaje visto (los `trip_id` del feed son los
-del horario). Solo se comparan horas con al menos la mitad de las fotos esperadas, para que un
+ruta, la suma y el máximo de buses en las fotos, y cada viaje visto por su `trip_id` (estable
+mientras dura el viaje). Si el feed no trae la hora programada de salida, como pasa desde el
+10-nov-2026, el viaje cuenta en la hora en que se vio por primera vez. Solo se comparan horas con al menos la mitad de las fotos esperadas, para que un
 rato con el recolector apagado no parezca un rato sin buses. TransMiCable queda fuera de las
 comparaciones porque sus cabinas no reportan en el feed.
 

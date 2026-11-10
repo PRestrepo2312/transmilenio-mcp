@@ -30,6 +30,8 @@ SITP zonal y TransMiCable), leídos de los feeds GTFS Realtime públicos de Tran
 - `ultima_parada` es la última a la que el bus YA llegó, no la siguiente.
 - Los tiempos de llegada son estimados; dilo así.
 - Si la respuesta trae `aviso`, el feed oficial está detenido o falló: dilo antes de dar datos.
+- Si trae `nota_sentido` o `aviso_sentido`, faltan buses cuyo sentido aún no se conoce: dilo
+  y sugiere volver a preguntar en uno o dos minutos.
 - Responde en español y menciona que los datos son de TransMilenio S.A.
 
 {FUENTE}

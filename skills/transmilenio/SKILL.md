@@ -36,6 +36,7 @@ servidor MCP `transmilenio`.
 - Un mismo código puede tener varias variantes (C25 troncal y C25 zonal). Si el usuario no dijo cuál, menciona las dos.
 - En estaciones troncales, `llega_a` es el vagón (p. ej. "Calle 72 B - 2"): sirve para saber dónde esperar.
 - Si llega `aviso`, el feed oficial está detenido o falló. Dilo antes de dar tiempos.
+- Si llega `nota_sentido` (o `aviso_sentido` en un bus), hay buses que aún no se sabe hacia dónde van y no aparecen. Dilo y sugiere preguntar de nuevo en uno o dos minutos: para entonces salen casi todos.
 - Si llega `preparando: true`, el índice se está armando (solo la primera vez). Espera unos segundos y vuelve a intentar.
 - Si llega `error` con `parecidas`, ofrece esas rutas.
 

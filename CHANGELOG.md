@@ -1,5 +1,22 @@
 # Cambios
 
+## 0.1.2 (10 de noviembre de 2026)
+
+El feed volvió el 10 de noviembre tras cinco días detenido, pero ya no trae una parada que
+corresponda a la posición del bus. Con 0.1.1 eso daba llegadas falsas (un bus en la Calle 80
+salía "llegando" a la Calle 72).
+
+- El bus se ubica por geometría: el tramo de su ruta más cercano. La parada del feed solo se
+  usa si cuadra con la posición.
+- La ida y la vuelta se separan por hacia dónde se ha movido el bus entre lecturas. Mientras no
+  se sabe, el bus no entra en las llegadas y la respuesta dice cuántos faltan (`sin_sentido`,
+  `nota_sentido`).
+- Tras cada consulta se sigue leyendo el feed 15 minutos en segundo plano, para que la
+  siguiente pregunta tenga el sentido de casi toda la flota.
+- `ultima_parada` sale de la ubicación calculada, no del feed.
+- El veedor ignora `start_time` cuando es la hora del reporte y cuenta el viaje en la hora en
+  que se vio por primera vez.
+
 ## 0.1.1 (9 de noviembre de 2026)
 
 - Publicado en PyPI: `uvx transmilenio-mcp`. Se sube desde GitHub Actions con Trusted Publishing.

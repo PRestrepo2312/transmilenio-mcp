@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 import re
 from collections import defaultdict
 
@@ -21,6 +22,39 @@ SISTEMAS = {
 
 # Origen y destino a menos de esto: la ruta sale y vuelve al mismo punto.
 _RADIO_CIRCULAR_M = 800
+
+# Si el bus está más lejos que esto del tramo que empieza en la parada que reporta, esa
+# parada no es la suya. Desde el 10-nov-2026 el feed manda stop_id y current_stop_sequence
+# que no corresponden a la posición (mediana de 6 km de diferencia).
+_TOLERANCIA_PARADA_M = 400
+# Un tramo (la recta entre dos paradas seguidas) cuenta como candidato si el bus está a
+# menos de esto. Holgado porque la vía se curva entre paradas y la recta no.
+_TOLERANCIA_TRAMO_M = 250
+# Tramos a casi la misma distancia que el mejor se consideran empatados.
+_HOLGURA_EMPATE_M = 60
+# Diferencia máxima entre el rumbo del bus y el del tramo para decir que va en ese sentido.
+_ANGULO_MAX = 75
+
+# Proyección plana local: a la escala de Bogotá el error es de centímetros.
+_M_LAT = 110_574.0
+_M_LON = 111_320.0 * math.cos(math.radians(4.65))
+
+
+def _xy(lat: float, lon: float) -> tuple[float, float]:
+    return lon * _M_LON, lat * _M_LAT
+
+
+def _a_segmento(px: float, py: float, a: tuple[float, float], b: tuple[float, float]) -> float:
+    ax, ay = a
+    dx, dy = b[0] - ax, b[1] - ay
+    largo2 = dx * dx + dy * dy
+    t = 0.0 if largo2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / largo2))
+    return math.hypot(px - ax - t * dx, py - ay - t * dy)
+
+
+def diferencia_angulo(a: float, b: float) -> float:
+    d = abs(a - b) % 360
+    return 360 - d if d > 180 else d
 
 
 class Red:
@@ -66,6 +100,8 @@ class Red:
         self._nombres_norm = {sid: normalizar(p.nombre) for sid, p in self.paradas.items()}
         self._ubicacion: dict[tuple, tuple[Recorrido, int] | None] = {}
         self._resumenes: dict[int, Resumen] = {}
+        # Por recorrido: cada tramo (k, inicio, fin, rumbo) en coordenadas planas.
+        self._tramos: dict[int, list[tuple[int, tuple[float, float], tuple[float, float], float]]] = {}
 
     # ------------------------------------------------------------ paradas
 
@@ -146,8 +182,86 @@ class Red:
     def recorridos_de(self, ruta_id: str) -> list[Recorrido]:
         return self._por_ruta.get(ruta_id, [])
 
-    def ubicar(self, v: Vehiculo) -> tuple[Recorrido, int] | None:
+    def ubicar(
+        self,
+        v: Vehiculo,
+        rumbo_bus: float | None = None,
+        previa: tuple[str, int] | None = None,
+    ) -> tuple[Recorrido, int] | None:
         """Recorrido del bus y posición de su última parada en él.
+
+        Primero con la parada que reporta el feed, si cuadra con la posición. Si no, por
+        geometría: el tramo del recorrido más cercano al bus. `rumbo_bus` (hacia dónde se
+        ha movido, en grados) separa la ida de la vuelta, que van por la misma vía; `previa`
+        (variante, k) es donde se ubicó el bus la vez anterior y desempata.
+        """
+        ubic = self._ubicar_por_parada(v)
+        if ubic and self.cuadra(v, *ubic):
+            return ubic
+        return self._ubicar_por_posicion(v, rumbo_bus, previa)
+
+    def parada_del_feed_cuadra(self, v: Vehiculo) -> bool:
+        ubic = self._ubicar_por_parada(v)
+        return bool(ubic and self.cuadra(v, *ubic))
+
+    def cuadra(self, v: Vehiculo, rec: Recorrido, k: int) -> bool:
+        """¿El bus está cerca del tramo que empieza en la parada k?"""
+        a = self._punto(rec.paradas[k])
+        if a is None:
+            return False
+        b = self._punto(rec.paradas[k + 1]) if k + 1 < len(rec.paradas) else None
+        return _a_segmento(*_xy(v.lat, v.lon), a, b or a) <= _TOLERANCIA_PARADA_M
+
+    def _punto(self, parada_id: str) -> tuple[float, float] | None:
+        p = self.paradas.get(parada_id)
+        return _xy(p.lat, p.lon) if p else None
+
+    def _tramos_de(self, rec: Recorrido):
+        if rec.indice not in self._tramos:
+            tramos = []
+            for k in range(len(rec.paradas) - 1):
+                a, b = self.paradas.get(rec.paradas[k]), self.paradas.get(rec.paradas[k + 1])
+                if a and b and (a.lat, a.lon) != (b.lat, b.lon):
+                    tramos.append((k, _xy(a.lat, a.lon), _xy(b.lat, b.lon), rumbo(a.lat, a.lon, b.lat, b.lon)))
+            self._tramos[rec.indice] = tramos
+        return self._tramos[rec.indice]
+
+    def _ubicar_por_posicion(
+        self, v: Vehiculo, rumbo_bus: float | None, previa: tuple[str, int] | None
+    ) -> tuple[Recorrido, int] | None:
+        px, py = _xy(v.lat, v.lon)
+        candidatos = []  # (distancia, recorrido, k, rumbo del tramo)
+        for rec in self.recorridos_de(v.ruta_id):
+            for k, a, b, g in self._tramos_de(rec):
+                d = _a_segmento(px, py, a, b)
+                if d <= _TOLERANCIA_TRAMO_M:
+                    candidatos.append((d, rec, k, g))
+        if rumbo_bus is not None:
+            candidatos = [c for c in candidatos if diferencia_angulo(c[3], rumbo_bus) <= _ANGULO_MAX]
+        if not candidatos:
+            return None
+        minimo = min(c[0] for c in candidatos)
+        cerca = [c for c in candidatos if c[0] <= minimo + _HOLGURA_EMPATE_M]
+
+        # Seguir en la variante de la vez anterior, un poco más adelante, si está entre los empatados.
+        if previa:
+            clave, k_previo = previa
+            siguen = [c for c in cerca if c[1].clave == clave and k_previo - 1 <= c[2]]
+            if siguen:
+                d, rec, k, _ = min(siguen, key=lambda c: (c[2], c[0]))
+                return rec, k
+
+        if rumbo_bus is None:
+            # Sin saber hacia dónde va, solo vale si todos los empatados van en el mismo sentido;
+            # si no, es la ida contra la vuelta por la misma vía y adivinar daría llegadas falsas.
+            g0 = min(cerca, key=lambda c: c[0])[3]
+            if any(diferencia_angulo(c[3], g0) > _ANGULO_MAX for c in cerca):
+                return None
+        d, rec, k, _ = min(cerca, key=lambda c: (c[0], c[1].indice))
+        return rec, k
+
+    def _ubicar_por_parada(self, v: Vehiculo) -> tuple[Recorrido, int] | None:
+        """Con la parada y la secuencia que reporta el feed.
 
         Una misma parada puede aparecer en varios recorridos de la ruta (ida y vuelta pasan
         por el mismo paradero), así que se prefiere el que además coincide en número de

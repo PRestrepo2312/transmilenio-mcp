@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import threading
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from google.transit import gtfs_realtime_pb2 as gtfs
 
@@ -18,7 +19,7 @@ from .datos.gtfs_rt import FeedsRT
 from .dominio import estimacion as est
 from .dominio.modelos import Recorrido, Vehiculo
 from .dominio.red import Red
-from .dominio.texto import distancia_m, normalizar
+from .dominio.texto import distancia_m, normalizar, rumbo
 
 BOGOTA = dt.timezone(dt.timedelta(hours=-5), "America/Bogota")
 
@@ -37,6 +38,11 @@ EFECTOS = {
 }
 
 NOTA_ESTIMACION = "Estimado con la posición del bus en su tramo y los tiempos del horario oficial."
+NOTA_SENTIDO = (
+    "{n} bus(es) de estas rutas aún no tienen sentido conocido y no se incluyen: el feed no dice "
+    "hacia dónde va cada bus y se deduce de su movimiento entre lecturas, que TransMilenio publica "
+    "más o menos cada minuto. Consultando de nuevo en uno o dos minutos salen casi todos."
+)
 
 
 class PreparandoIndice(Exception):
@@ -132,6 +138,62 @@ class CargadorRed:
         return self._red
 
 
+# ---------------------------------------------------------------- rastro de cada bus
+
+
+class Rastro:
+    """Posiciones recientes de cada bus, para saber hacia dónde va.
+
+    El feed no trae rumbo ni una parada confiable, y la ida y la vuelta de una ruta van
+    por la misma vía: lo único que las separa es hacia dónde se ha movido el bus.
+    """
+
+    def __init__(self) -> None:
+        self._pos: dict[str, deque[tuple[int, float, float]]] = {}
+        self._previa: dict[str, tuple[str, int]] = {}
+        self._cache: dict[str, tuple[int, tuple[Recorrido, int] | None]] = {}
+        self._red: Red | None = None
+        self._candado = threading.RLock()  # el hilo de rastreo anota mientras se consulta
+
+    def anotar(self, vehiculos: list[Vehiculo]) -> None:
+        with self._candado:
+            for v in vehiculos:
+                q = self._pos.setdefault(v.id, deque(maxlen=config.RASTRO_MAX_PUNTOS))
+                if not q or v.ts > q[-1][0]:
+                    q.append((v.ts, v.lat, v.lon))
+            if len(self._pos) > 3 * max(1, len(vehiculos)):
+                vivos = {v.id for v in vehiculos}
+                for d in (self._pos, self._previa, self._cache):
+                    for k in [k for k in d if k not in vivos]:
+                        del d[k]
+
+    def rumbo(self, v: Vehiculo) -> float | None:
+        """Grados desde la posición anterior más reciente que esté lo bastante lejos."""
+        with self._candado:
+            puntos = list(self._pos.get(v.id, ()))
+        for ts, lat, lon in reversed(puntos):
+            if ts >= v.ts:
+                continue
+            if v.ts - ts > config.RASTRO_VENTANA_S:
+                break
+            if distancia_m(lat, lon, v.lat, v.lon) >= config.RASTRO_MIN_M:
+                return rumbo(lat, lon, v.lat, v.lon)
+        return None
+
+    def ubicar(self, red: Red, v: Vehiculo) -> tuple[Recorrido, int] | None:
+        with self._candado:
+            if red is not self._red:  # red nueva: los índices de los recorridos cambian
+                self._red, self._cache, self._previa = red, {}, {}
+            hit = self._cache.get(v.id)
+            if hit and hit[0] == v.ts:
+                return hit[1]
+            ubic = red.ubicar(v, self.rumbo(v), self._previa.get(v.id))
+            self._cache[v.id] = (v.ts, ubic)
+            if ubic:
+                self._previa[v.id] = (ubic[0].clave, ubic[1])
+            return ubic
+
+
 # ---------------------------------------------------------------- foto de la flota
 
 
@@ -141,6 +203,14 @@ class Foto:
     vehiculos: list[Vehiculo]
     ref: float  # "ahora" para las estimaciones: la hora real o la del último dato si el feed está detenido
     publico: dict  # frescura y avisos, para incluir en cada respuesta
+    rastro: Rastro = field(default_factory=Rastro)
+
+    def ubicar(self, v: Vehiculo) -> tuple[Recorrido, int] | None:
+        return self.rastro.ubicar(self.red, v)
+
+    def sin_sentido(self, v: Vehiculo) -> bool:
+        """Bus de una ruta conocida que aún no se puede ubicar porque no se sabe hacia dónde va."""
+        return bool(self.red.recorridos_de(v.ruta_id)) and self.ubicar(v) is None and self.rastro.rumbo(v) is None
 
 
 class Servicio:
@@ -149,14 +219,44 @@ class Servicio:
         feeds: FeedsRT | None = None,
         cargador: CargadorRed | None = None,
         reloj: Callable[[], float] = time.time,
+        rastrear: bool = True,
     ) -> None:
         self.feeds = feeds or FeedsRT(reloj=reloj)
         self.cargador = cargador or CargadorRed(reloj=reloj)
         self._reloj = reloj
+        self.rastro = Rastro()
+        self._rastrear = rastrear
+        self._activo_hasta = 0.0
+        self._hilo_rastro: threading.Thread | None = None
+        self._candado_rastro = threading.Lock()
+
+    def _seguir_rastreando(self) -> None:
+        """Mientras haya consultas recientes, sigue leyendo el feed en segundo plano.
+
+        El sentido de cada bus sale de comparar lecturas, y TransMilenio regenera el feed más o
+        menos cada minuto: sin esto, cada pregunta tras un rato de silencio empezaría en frío.
+        """
+        if not self._rastrear:
+            return
+        with self._candado_rastro:
+            self._activo_hasta = time.monotonic() + config.RASTREO_ACTIVO_S
+            if self._hilo_rastro and self._hilo_rastro.is_alive():
+                return
+            self._hilo_rastro = threading.Thread(target=self._rastrear_mientras_activo, daemon=True)
+            self._hilo_rastro.start()
+
+    def _rastrear_mientras_activo(self) -> None:
+        while time.monotonic() < self._activo_hasta:
+            time.sleep(config.RASTREO_PASO_S)
+            # Una lectura fallida no importa: la siguiente vuelve a intentar.
+            with contextlib.suppress(Exception):
+                self.rastro.anotar(self.feeds.vehiculos()[0])
 
     def _foto(self) -> Foto:
         red = self.cargador.red()
         vehs, lectura = self.feeds.vehiculos()
+        self.rastro.anotar(vehs)
+        self._seguir_rastreando()
         ahora = self._reloj()
         ultimo = max((v.ts for v in vehs), default=0)
         edad = int(ahora - ultimo) if ultimo else None
@@ -171,7 +271,7 @@ class Servicio:
         elif lectura.de_respaldo:
             publico["aviso"] = "No se pudo leer el feed de TransMilenio ahora; se usa la lectura anterior."
         ref = (ultimo or ahora) if detenido else ahora
-        return Foto(red, vehs, ref, publico)
+        return Foto(red, vehs, ref, publico, self.rastro)
 
     def _bus(self, f: Foto, v: Vehiculo, retrasos: dict[str, int] | None = None) -> dict:
         ruta = f.red.rutas.get(v.ruta_id)
@@ -183,11 +283,12 @@ class Servicio:
             "placa": v.placa,
             "lat": round(v.lat, 6),
             "lon": round(v.lon, 6),
-            "ultima_parada": f.red.nombre(v.parada_id),
+            "ultima_parada": None,
             "hace_s": max(0, int(f.ref - v.ts)),
         }
-        if ubic := f.red.ubicar(v):
+        if ubic := f.ubicar(v):
             rec, k = ubic
+            d["ultima_parada"] = f.red.nombre(rec.paradas[k])
             d["destino"] = f.red.resumen(rec).destino  # el del recorrido, no el nombre comercial
             d["sentido"] = f.red.sentido_bus(rec, k)
             d["variante"] = rec.clave
@@ -256,10 +357,13 @@ class Servicio:
         retrasos = self.feeds.retrasos()
         horizonte = _acotar(minutos, 1, 90) * 60
         out = []
+        sirven = solo if solo is not None else red.rutas_de(sid)
+        sin_sentido = 0
         for v in f.vehiculos:
             if (solo is not None and v.ruta_id not in solo) or not est.reporte_vigente(v, f.ref):
                 continue
-            if not (ubic := red.ubicar(v)):
+            if not (ubic := f.ubicar(v)):
+                sin_sentido += v.ruta_id in sirven and f.sin_sentido(v)
                 continue
             rec, k = ubic
             j = next((i for i in range(k + 1, len(rec.paradas)) if rec.paradas[i] in objetivo), None)
@@ -288,6 +392,9 @@ class Servicio:
             "nota": NOTA_ESTIMACION,
             **f.publico,
         }
+        if sin_sentido:
+            res["sin_sentido"] = sin_sentido
+            res["nota_sentido"] = NOTA_SENTIDO.format(n=sin_sentido)
         if otras:
             res["otras_coincidencias"] = [
                 {"id": o, "nombre": red.paradas[o].nombre, "tipo": self._ficha_parada(red, o)["tipo"]} for o in otras
@@ -321,7 +428,7 @@ class Servicio:
         for v in f.vehiculos:
             if v.ruta_id not in ids:
                 continue
-            if ubic := red.ubicar(v):
+            if ubic := f.ubicar(v):
                 por_variante[ubic[0].clave].append(v)
             else:
                 sueltos[v.ruta_id].append(v)
@@ -355,7 +462,13 @@ class Servicio:
                         "origen": None,
                         "destino": r.nombre,
                         "sentido": None,
-                        "nota": "Recorrido no publicado en el GTFS del día; solo hay posiciones.",
+                        "nota": (
+                            "Buses que aún no se pueden ubicar en un recorrido: o no se sabe todavía hacia "
+                            "dónde van (se deduce de su movimiento entre lecturas del feed, cada ~1 min) "
+                            "o van por fuera del trazado publicado."
+                            if red.recorridos_de(rid)
+                            else "Recorrido no publicado en el GTFS del día; solo hay posiciones."
+                        ),
                         "buses_en_via": len(buses),
                         "buses": buses[:limite],
                     }
@@ -407,7 +520,7 @@ class Servicio:
             return None
         proximos = []
         for v in suyos:
-            if not est.reporte_vigente(v, f.ref) or not (ubic := red.ubicar(v)):
+            if not est.reporte_vigente(v, f.ref) or not (ubic := f.ubicar(v)):
                 continue
             r2, k = ubic
             j = next((x for x in range(k + 1, len(r2.paradas)) if r2.paradas[x] == mejor), None)
@@ -448,9 +561,14 @@ class Servicio:
         res = {**self._bus(f, v, self.feeds.retrasos()), "ruta_id": v.ruta_id, **f.publico}
         if not est.reporte_vigente(v, f.ref):
             res["aviso_bus"] = f"Este bus no reporta hace {int(f.ref - v.ts) // 60} min; los tiempos no son confiables."
-        ubic = red.ubicar(v)
+        ubic = f.ubicar(v)
         if not ubic:
             res["paradas"] = []
+            if f.sin_sentido(v):
+                res["aviso_sentido"] = (
+                    "Todavía no se sabe hacia dónde va este bus (el feed no lo dice; se deduce de su "
+                    "movimiento entre lecturas, cada ~1 min). Consulta de nuevo en uno o dos minutos."
+                )
             return res
         rec, k = ubic
         paradas: list[dict] = []
@@ -560,7 +678,7 @@ class Servicio:
         filas = []
         for v in f.vehiculos:
             ruta = red.rutas.get(v.ruta_id)
-            ubic = red.ubicar(v)
+            ubic = f.ubicar(v)
             filas.append(
                 [
                     round(v.lat, 5),
@@ -570,7 +688,7 @@ class Servicio:
                     ruta.sistema if ruta else "",
                     v.numero,
                     v.placa,
-                    red.nombre(v.parada_id) or "",
+                    (red.nombre(ubic[0].paradas[ubic[1]]) if ubic else None) or "",
                     max(0, int(f.ref - v.ts)),
                     ubic[0].clave if ubic else f"{v.ruta_id}:?",
                 ]

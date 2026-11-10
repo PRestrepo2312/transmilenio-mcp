@@ -25,10 +25,6 @@ Claude: H75 hacia Portal Usme, llegando (vagón B-2). A60, llegando.
 Cubre troncales, duales, alimentadores, SITP zonal y TransMiCable. El 5 de noviembre a las
 7 p. m. el feed tenía 7.730 buses en 665 rutas.
 
-> **Estado del feed.** El feed oficial de posiciones no se actualiza desde el jueves 5 de
-> noviembre a las 7:11 p. m. Las capturas y el video son de ese último dato, y mientras siga
-> así cada respuesta lo avisa.
-
 ## Instalar
 
 Hace falta [uv](https://docs.astral.sh/uv/) (`pip install uv`).
@@ -56,8 +52,8 @@ La primera vez descarga el GTFS del día (~180 MB) y arma un índice de 0,4 MB. 
 30 segundos y luego queda en caché.
 
 Opcional: copia `skills/transmilenio/` a tus skills de Claude. Le explica cómo leer los
-datos (la parada reportada es la última que el bus pasó, los tiempos son estimados, qué
-hacer si el feed está detenido).
+datos (`ultima_parada` es la última que el bus pasó, los tiempos son estimados, qué
+hacer si el feed está detenido o si faltan buses sin sentido conocido).
 
 ## Ver el mapa
 
@@ -132,10 +128,17 @@ momento no se puede sacar mucho; para medir hay que dejar el recolector prendido
 
 ## Cómo calcula las llegadas
 
-El feed de TransMilenio dice dónde está cada bus y cuál fue la última parada que pasó.
-No dice a qué hora llegará a las siguientes. La estimación toma qué parte del tramo actual
-ya recorrió el bus y le suma los tiempos que el horario oficial da para los tramos que le
-faltan. No tiene en cuenta el tráfico del momento; eso está en la lista de pendientes.
+El feed de TransMilenio dice dónde está cada bus y de qué ruta es. No dice a qué hora
+llegará a las siguientes paradas, y desde el 10 de noviembre de 2026 tampoco trae una parada
+que corresponda a la posición del bus. Así que el bus se ubica por geometría: el tramo de su
+ruta que tiene más cerca. La ida y la vuelta suelen ir por la misma vía; las separa hacia
+dónde se ha movido el bus entre una lectura y otra. TransMilenio regenera el feed más o menos
+cada minuto, así que en la primera pregunta algunos buses aún no tienen sentido y la respuesta
+dice cuántos; en uno o dos minutos salen casi todos.
+
+Con el bus ubicado, la estimación toma qué parte del tramo actual ya recorrió y le suma los
+tiempos que el horario oficial da para los tramos que le faltan. No tiene en cuenta el tráfico
+del momento; eso está en la lista de pendientes.
 
 Si el feed deja de actualizarse (pasa de noche), cada respuesta trae un `aviso` y los
 tiempos se calculan contra el último dato, no contra la hora actual. Un bus que lleva más

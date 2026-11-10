@@ -128,7 +128,9 @@ class Historial:
                         _fecha_servicio(v),
                         v.viaje_id,
                         v.ruta_id,
-                        v.salida,
+                        # Sin hora programada en el feed queda la hora en que se vio el viaje por
+                        # primera vez: el ON CONFLICT no la pisa en las lecturas siguientes.
+                        v.salida or dt.datetime.fromtimestamp(v.ts, BOGOTA).strftime("%H:%M:%S"),
                         v.numero,
                         v.ts,
                         v.ts,

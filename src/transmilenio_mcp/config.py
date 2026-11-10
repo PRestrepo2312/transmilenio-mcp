@@ -23,6 +23,16 @@ BUS_VIEJO_S = 300
 # Si la llegada estimada quedó más de esto en el pasado, el bus probablemente ya pasó.
 ETA_PASADA_TOLERANCIA_S = 120
 
+# Rastro: para saber hacia dónde va un bus se compara su posición con una anterior que
+# esté al menos a RASTRO_MIN_M y no tenga más de RASTRO_VENTANA_S.
+RASTRO_MIN_M = 40
+RASTRO_VENTANA_S = 420
+RASTRO_MAX_PUNTOS = 12
+# Después de cada consulta se sigue leyendo el feed en segundo plano por este tiempo, para
+# que el rastro esté al día en la siguiente. TransMilenio regenera el feed cada ~60-75 s.
+RASTREO_ACTIVO_S = 900
+RASTREO_PASO_S = 20
+
 GTFS_BUCKET = "gtfs-estaticos"
 INDICE_URL = os.environ.get("TRANSMI_INDICE_URL")
 INDICE_MAX_EDAD_H = 72

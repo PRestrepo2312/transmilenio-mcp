@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import threading
 import time
 from collections.abc import Callable
@@ -12,6 +13,25 @@ from google.transit import gtfs_realtime_pb2 as gtfs
 
 from .. import config
 from ..dominio.modelos import Vehiculo
+
+_BOGOTA = dt.timezone(dt.timedelta(hours=-5))
+
+
+def _salida_programada(start_time: str, ts: int) -> str:
+    """La hora programada de salida del viaje, o "" si el feed no la trae de verdad.
+
+    Desde el 10-nov-2026 el feed manda en start_time la misma hora del reporte de posición,
+    que cambia en cada lectura; eso no es la salida programada.
+    """
+    if not start_time or not ts:
+        return start_time
+    try:
+        h, m, s = (int(x) for x in start_time.split(":"))
+    except ValueError:
+        return ""
+    reporte = dt.datetime.fromtimestamp(ts, _BOGOTA)
+    diferencia = abs((h % 24) * 3600 + m * 60 + s - (reporte.hour * 3600 + reporte.minute * 60 + reporte.second))
+    return "" if min(diferencia, 86400 - diferencia) <= 90 else start_time
 
 
 @dataclass(frozen=True)
@@ -82,7 +102,7 @@ class FeedsRT:
                     secuencia=v.current_stop_sequence,
                     ts=v.timestamp,
                     fecha_servicio=v.trip.start_date,
-                    salida=v.trip.start_time,
+                    salida=_salida_programada(v.trip.start_time, v.timestamp),
                 )
             )
         return out, lectura

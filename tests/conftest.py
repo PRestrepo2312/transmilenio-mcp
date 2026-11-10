@@ -44,4 +44,4 @@ def servicio(indice, ultimo_reporte) -> Servicio:
     # El reloj se fija 30 s después del último reporte: el feed se ve "en vivo".
     reloj = lambda: ultimo_reporte + 30  # noqa: E731
     feeds = FeedsRT(cliente=httpx.Client(transport=transporte_fixtures()), base="https://feed.test/", reloj=reloj)
-    return Servicio(feeds=feeds, cargador=CargadorRed(obtener=lambda: indice, reloj=reloj), reloj=reloj)
+    return Servicio(feeds=feeds, cargador=CargadorRed(obtener=lambda: indice, reloj=reloj), reloj=reloj, rastrear=False)
