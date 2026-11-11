@@ -11,10 +11,11 @@ verlos en el navegador. Corre en tu computador y no pide API key ni registro.
 
 ![Buses de TransMilenio sobre el mapa de Bogotá, de noche, alrededor de la Calle 72](https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/portada.webp)
 
-Un recorrido de 50 segundos: la flota completa, una estación, un bus, lo programado contra lo
-real y dos preguntas a Claude.
+Un minuto con sonido, grabado en vivo el martes 10 de noviembre a las 7:18 p. m.: la flota
+completa, una estación, un bus, lo programado contra lo real, los viajes cancelados y dos
+preguntas a Claude.
 
-https://github.com/user-attachments/assets/f2b6dca3-eee6-486f-959b-6c7155d7b6c1
+https://github.com/user-attachments/assets/7a694c14-81cf-42f5-8b0b-6c298049341b
 
 ```
 Tú:     ¿Qué buses llegan a Calle 72 en los próximos 5 minutos?
