@@ -12,3 +12,8 @@ build/
 *.sqlite-shm
 # índice armado en local (el de tests/fixtures sí va)
 /indice.json.gz
+# salidas del video (docs/video)
+*.mp4
+*.m4a
+datos_video.json
+audio_tmp/

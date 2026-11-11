@@ -46,7 +46,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
 # Las imágenes son del README; para instalar no hacen falta.
-exclude = ["docs/img", ".github"]
+exclude = ["docs/img", "docs/video", ".github"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/transmilenio_mcp"]

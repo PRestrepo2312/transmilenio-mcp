@@ -77,7 +77,7 @@ modo para grabar video.
 
 <p align="center"><img src="https://raw.githubusercontent.com/PRestrepo2312/transmilenio-mcp/main/docs/img/movil.webp" alt="El mapa en el celular, ruta C25" width="300"></p>
 
-Las capturas se regeneran con `python docs/capturas.py`.
+Las capturas se regeneran con `python docs/capturas.py` y el video con los pasos de [docs/video](https://github.com/PRestrepo2312/transmilenio-mcp/blob/main/docs/video/LEEME.md).
 
 ## Veedor: lo programado contra lo que sale a la calle
 
